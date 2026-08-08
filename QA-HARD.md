@@ -78,6 +78,25 @@ and verifies that city's own fact table — the same manual, deliberate process
 described in Q1 — not a one-click deploy of Santa Monica's rules onto a
 different jurisdiction.
 
+It's also white-label by architecture, not just a slide claim — the office
+themselves suggested this while watching the demo: the base design stays
+neutral, and each city applies its own CSS on top. That's literally how the
+skin layer here is built (`city-skin.css` sits over the shared engine, with a
+reserved, unfilled slot for a city's own seal). Santa Monica's branding isn't
+baked into the logic layer at all.
+
+**Q7b. Does this use MCP (Model Context Protocol)?**
+
+Not today, and we're not going to claim it does in front of a room that knows
+MCP well. `duck.py` is straightforward Python with a fact table in the file —
+no MCP server, no live connection. What's true: MCP is the intended path to
+production, specifically because it's the right protocol for connecting this
+engine to the city's actual live sources (a MAR registry, Board resolutions)
+without changing the engine itself. Today's fact table is the verification
+mechanism; MCP is how that mechanism would plug into real data next. If asked
+"is it running now," the honest answer is no — it's the deployment plan, not
+a built feature.
+
 **Q8. This is a hackathon prototype — what's actually production-ready versus
 demo-ware?**
 

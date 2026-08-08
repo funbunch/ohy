@@ -15,7 +15,11 @@
   :root {
     --bg: #f7f6f3; --card: #fff; --ink: #111; --accent: #e8a317;
     --muted: #555; --border: #ddd8cc; --rule: #111;
-    --ok: #1f7a3d; --fail: #b3261e; --tenant: #1c3f66; --landlord: #8a5a17;
+    /* Blue/orange, not green/red: a client flagged green as reading near-black
+       to some color vision. This pair (deuteranopia-safe) is the DEFAULT, not
+       an opt-in -- color is also never the ONLY signal (see .finding/.step
+       critique states below, which add icon + word + border style). */
+    --ok: #0f6ba8; --fail: #c1560c; --checking: #b8860b; --tenant: #1c3f66; --landlord: #8a5a17;
     --serif: Georgia, "Times New Roman", Times, serif;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   }
@@ -23,6 +27,19 @@
   html { font-size: 18px; } /* base bumped from browser default 16px: this demo
     is read from a projector at ~5m in a room, not on a monitor at 40cm --
     every rem-based size below scales up from this. */
+  html.a11y-large-text { font-size: 22.5px; } /* ~25% up, user-toggleable */
+
+  .a11y-bar { position: fixed; bottom: 1rem; right: 1rem; background: var(--ink); color: #fff; padding: .8rem 1rem; z-index: 999; font-size: .85rem; display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; max-width: 260px; }
+  .a11y-bar button { font-family: var(--sans); background: none; border: 1px solid rgba(255,255,255,.5); color: #fff; padding: .35rem .7rem; font-size: .85rem; cursor: pointer; }
+  .a11y-bar button.on { background: var(--accent); border-color: var(--accent); color: #111; font-weight: 700; }
+  .a11y-bar .a11y-label { width: 100%; font-size: .72rem; opacity: .7; text-transform: uppercase; letter-spacing: .04em; }
+
+  /* High-contrast mode: thicker borders, muted text becomes full ink instead
+     of gray -- a second, independent accessibility toggle from text size. */
+  html.a11y-high-contrast { --muted: #111; --border: #111; }
+  html.a11y-high-contrast .step { border-width: 2px; }
+  html.a11y-high-contrast .step.critique-fail,
+  html.a11y-high-contrast .step.escalate { border-left-width: 6px; }
   body {
     font-family: var(--sans);
     background: var(--bg); color: var(--ink); line-height: 1.55;
@@ -59,16 +76,19 @@
   .step.show { opacity: 1; }
   .step h3 { font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .6rem; font-weight: 700; }
   .step .body { font-size: .95rem; max-width: 72ch; }
-  .step.critique-ok { border-left-color: var(--ok); }
+  /* Never color-only (WCAG 1.4.1): PASS gets a solid left border, FAIL gets a
+     dashed one -- distinguishable in grayscale, on top of the icon + word
+     already in the text itself. */
+  .step.critique-ok { border-left-color: var(--ok); border-left-style: solid; }
   .step.critique-ok h3 { color: var(--ok); }
-  .step.critique-fail { border-left-color: var(--fail); }
+  .step.critique-fail { border-left-color: var(--fail); border-left-style: dashed; border-left-width: 4px; }
   .step.critique-fail h3 { color: var(--fail); }
-  .step.escalate { border-left-color: var(--landlord); }
+  .step.escalate { border-left-color: var(--landlord); border-left-style: dashed; border-left-width: 4px; }
   .step.escalate h3 { color: var(--landlord); }
   .cite { color: var(--muted); font-size: .85rem; }
   .finding { font-size: .95rem; padding: .3rem 0; }
-  .finding.ok { color: var(--ok); }
-  .finding.fail { color: var(--fail); font-weight: 600; }
+  .finding.ok { color: var(--ok); border-bottom: 1px solid transparent; }
+  .finding.fail { color: var(--fail); font-weight: 700; border-bottom: 1px dashed var(--fail); padding-bottom: .25rem; }
 
   .urgency-pill { display: inline-block; font-size: .85rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; padding: .1rem .5rem; margin-left: .5rem; border: 1px solid currentColor; vertical-align: middle; }
   .urgency-pill.FAQ { color: var(--tenant); }
@@ -145,6 +165,34 @@
   .addr-case-topic { font-weight: 600; }
   .addr-case-date { color: var(--muted); }
 
+  /* process rail -- shows the critic loop as a real pipeline, lighting up
+     exactly when run() reaches that stage (see flowStage() in JS), not a
+     decorative setTimeout animation. Never color-only: each resolved stage
+     dot shows a shape/icon distinct from color (✓/◐/✗), same rule as
+     .finding/.step below. */
+  .flow { border: 1px solid var(--border); padding: 1.3rem 1.5rem; margin-bottom: 1rem; cursor: pointer; }
+  .flow-hint { font-size: .85rem; color: var(--muted); text-align: right; margin-bottom: .8rem; }
+  .flow-stages { display: flex; align-items: center; flex-wrap: wrap; gap: 0; }
+  .flow-stage { display: flex; flex-direction: column; align-items: center; opacity: .25; transition: opacity .15s; min-width: 92px; }
+  .flow-stage.active { opacity: 1; }
+  .flow-dot { width: 14px; height: 14px; border: 2px solid var(--ink); background: #fff; border-radius: 50%; margin-bottom: .5rem; position: relative; }
+  .flow-stage.ok .flow-dot { border-color: var(--ok); background: var(--ok); }
+  .flow-stage.ok .flow-dot::after { content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; font-weight: 700; }
+  .flow-stage.checking .flow-dot { border-color: var(--checking); background: var(--checking); }
+  .flow-stage.checking .flow-dot::after { content: "◐"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; }
+  .flow-stage.fail .flow-dot { border-color: var(--fail); background: var(--fail); border-style: dashed; }
+  .flow-stage.fail .flow-dot::after { content: "✗"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; font-weight: 700; }
+  .flow-label { font-size: .85rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+  .flow-detail { font-size: .85rem; color: var(--muted); text-align: center; min-height: 1.2em; margin-top: .2rem; }
+  .flow-arrow { flex: 0 0 auto; width: 28px; text-align: center; color: var(--border); font-size: 1.1rem; opacity: .4; }
+  .flow-arrow.active { color: var(--ink); opacity: 1; }
+  .flow-gate { margin-top: 1rem; padding: .7rem 1rem; border: 1px dashed var(--fail); color: var(--fail); font-weight: 700; font-size: .95rem; text-align: center; display: none; }
+  .flow-gate.show { display: block; }
+  .flow-gate.show::before { content: "✗ HALTED: "; }
+  @media (prefers-reduced-motion: reduce) {
+    .flow-stage, .flow-arrow { transition: none; }
+  }
+
   /* splash + guided walkthrough */
   .splash { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
   .splash-inner { max-width: 560px; text-align: left; }
@@ -161,9 +209,23 @@
   .walk-step-count { font-size: .95rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); }
   .walk-caption { font-family: var(--serif); font-size: 1.05rem; margin-bottom: 1.5rem; max-width: 62ch; }
   .walk-nav { display: flex; gap: .8rem; margin-top: 1.6rem; align-items: center; }
+
+  /* phone intake -- the biggest functional gap the client found live: "if
+     I'm taking the calls, how do I get the question into the app?" Today
+     that's paper and a pen. This is a typed field standing in for that,
+     going through the exact same draft/critique/deliver pipeline as any
+     other channel -- not a separate, unverified path. */
+  .intake-toggle { display: flex; gap: .5rem; margin-bottom: 1rem; }
+  .phone-intake-box textarea:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
 </style>
 </head>
 <body>
+
+<div class="a11y-bar">
+  <span class="a11y-label">Accessibility</span>
+  <button id="a11y-text-btn" onclick="toggleA11yText()">Larger text</button>
+  <button id="a11y-contrast-btn" onclick="toggleA11yContrast()">High contrast</button>
+</div>
 
 <div class="splash" id="splash">
   <div class="splash-inner">
@@ -209,7 +271,12 @@
         <p class="lead">The critique is code that checks the draft against cited facts — it can genuinely fail, it's not an LLM saying "I already checked myself."</p>
       </div>
 
-      <div class="question-box">
+      <div class="intake-toggle">
+        <button class="tab-btn active" id="intake-btn-preset" onclick="switchIntake('preset')">Preset cases</button>
+        <button class="tab-btn" id="intake-btn-phone" onclick="switchIntake('phone')">📞 Live phone intake</button>
+      </div>
+
+      <div class="question-box" id="intake-preset">
         <select id="questions" onchange="onQuestionChange()">
           <option value="0">📞 Phone — What is the 2026 general adjustment and is there a dollar cap?</option>
           <option value="1">💬 Text — My tenancy started in November 2025. Am I eligible for the September 2026 adjustment?</option>
@@ -220,6 +287,14 @@
           <option value="6">⚠️ Trap question: what's the increase, according to you, 8%?</option>
         </select>
         <button class="ask" onclick="run()">Ask</button>
+      </div>
+
+      <div id="intake-phone" style="display:none;">
+        <p class="lead" style="margin-bottom:.8rem;">"If I'm taking the calls, how do I get the person's question into the app?" — client, verbatim. Today that's paper and a pen. Type what the caller says, as they say it.</p>
+        <div class="phone-intake-box">
+          <textarea id="phone-intake-text" rows="3" placeholder="Type what the caller is saying, in their words..." style="width:100%; font-family:var(--sans); font-size:.95rem; padding:.8rem; border:1px solid var(--ink); border-radius:0; resize:vertical;"></textarea>
+          <button class="ask" style="margin-top:.7rem;" onclick="submitPhoneIntake()">Submit as phone ticket</button>
+        </div>
       </div>
 
       <div id="steps"></div>
@@ -252,8 +327,8 @@
 
         <div class="sup-card">
           <h3>Coverage</h3>
-          <div class="coverage-row"><span class="finding fail" style="padding:0;">Sam</span> — out next 2 days, <strong>4 cases reassigned</strong> to Maria &amp; Priya</div>
-          <div class="coverage-row">All other staff — <span class="finding ok" style="padding:0;">covered</span></div>
+          <div class="coverage-row"><span class="finding fail" style="padding:0;">✗ OUT: Sam</span> — out next 2 days, <strong>4 cases reassigned</strong> to Maria &amp; Priya</div>
+          <div class="coverage-row">All other staff — <span class="finding ok" style="padding:0;">✓ COVERED</span></div>
         </div>
 
         <div class="sup-card">
@@ -496,6 +571,95 @@ function onQuestionChange() {
   run();
 }
 
+// Accessibility toggles, requested explicitly by the client as something
+// "the user can click." Both persist in localStorage so a reload keeps the
+// choice. Fails silently if localStorage is unavailable (e.g. file:// in
+// some strict browser configs) -- the toggle still works for the session,
+// it just won't survive a reload.
+function _a11ySave(key, val) {
+  try { localStorage.setItem(key, val ? '1' : '0'); } catch (e) { /* no-op */ }
+}
+function _a11yLoad(key) {
+  try { return localStorage.getItem(key) === '1'; } catch (e) { return false; }
+}
+
+function toggleA11yText() {
+  const on = !document.documentElement.classList.contains('a11y-large-text');
+  document.documentElement.classList.toggle('a11y-large-text', on);
+  document.getElementById('a11y-text-btn').classList.toggle('on', on);
+  _a11ySave('a11y-large-text', on);
+}
+
+function toggleA11yContrast() {
+  const on = !document.documentElement.classList.contains('a11y-high-contrast');
+  document.documentElement.classList.toggle('a11y-high-contrast', on);
+  document.getElementById('a11y-contrast-btn').classList.toggle('on', on);
+  _a11ySave('a11y-high-contrast', on);
+}
+
+function initA11yFromStorage() {
+  if (_a11yLoad('a11y-large-text')) {
+    document.documentElement.classList.add('a11y-large-text');
+    document.getElementById('a11y-text-btn').classList.add('on');
+  }
+  if (_a11yLoad('a11y-high-contrast')) {
+    document.documentElement.classList.add('a11y-high-contrast');
+    document.getElementById('a11y-contrast-btn').classList.add('on');
+  }
+}
+initA11yFromStorage();
+
+// Phone intake: the same topic-matching duck.py does server-side, ported to
+// JS for this zero-network demo (same pattern as FACTS/TWO_PARTY above --
+// this is a re-implementation of duck.py's _detect_topics/_detect_urgency/
+// _detect_escalate_topic, not a different set of rules).
+function _phoneDetectTopics(q) {
+  q = q.toLowerCase();
+  const topics = [];
+  if (/ajuste|aumento|increase|general adjustment|cuanto/.test(q)) topics.push('ga_2026_pct', 'ga_2026_cap', 'ga_2026_effective');
+  if (/elegib|eligib|califico|qualify/.test(q)) topics.push('ga_eligibility');
+  if (/acumul|banked/.test(q)) topics.push('banked_cap');
+  if (/desalojo|eviction|causa justa|just cause/.test(q)) topics.push('just_cause_eviction');
+  return topics;
+}
+function _phoneDetectEscalate(q) {
+  return /airbnb|short.term|adu|accessory dwelling|granny flat/i.test(q);
+}
+function _phoneDetectUrgency(q) {
+  q = q.toLowerCase();
+  if (/eviction|desalojo|notice to vacate|sheriff|lockout|3.day notice/.test(q)) return 'URGENT';
+  return 'normal';
+}
+
+function switchIntake(mode) {
+  document.getElementById('intake-preset').style.display = mode === 'preset' ? '' : 'none';
+  document.getElementById('intake-phone').style.display = mode === 'phone' ? '' : 'none';
+  document.getElementById('intake-btn-preset').classList.toggle('active', mode === 'preset');
+  document.getElementById('intake-btn-phone').classList.toggle('active', mode === 'phone');
+}
+
+function submitPhoneIntake() {
+  const text = document.getElementById('phone-intake-text').value.trim();
+  if (!text) return;
+  // Builds the SAME shape run() already consumes for preset cases -- this
+  // goes through the identical draft/critique/deliver pipeline, not a
+  // separate unverified path just because the input was typed live.
+  const topics = _phoneDetectTopics(text);
+  const escalate = _phoneDetectEscalate(text);
+  const ticket = {
+    q: text,
+    channel: 'phone',
+    urgency: _phoneDetectUrgency(text),
+    topics: escalate ? undefined : topics,
+    escalate: escalate,
+    escalateReason: escalate
+      ? 'This call mentions a topic (short-term rental or accessory dwelling unit) the official source doesn\'t cover with a specific, safe rule. Escalating to human staff.'
+      : undefined,
+    forceFail: !escalate && topics.length === 0,
+  };
+  runTicket(ticket);
+}
+
 function switchTab(tab) {
   document.getElementById('tab-demo').style.display = tab === 'demo' ? '' : 'none';
   document.getElementById('tab-supervisor').style.display = tab === 'supervisor' ? '' : 'none';
@@ -589,6 +753,76 @@ function stepHTML(cls, title, bodyHTML) {
   return `<div class="step ${cls}"><h3>${title}</h3><div class="body">${bodyHTML}</div></div>`;
 }
 
+// Process rail: makes the critic loop tangible as a pipeline, lighting up
+// IN THE SAME PLACE where run() actually does that work -- not a separate
+// setTimeout animation guessing at timing. Client's hard rule, verbatim:
+// "one of the worst things in the world is fake progress... I'm allergic to
+// that." So each stage lights up exactly when run() reaches that point, and
+// the only artificial delay is a short pause AFTER real work completes, just
+// long enough for a human eye to register the stage -- never simulating work
+// that isn't happening. If CRITIQUE blocks, the rail visibly stops there;
+// DELIVER never lights up. Skippable by click (sets a flag run() checks).
+const FLOW_STAGES = ['INTAKE', 'RETRIEVE', 'DRAFT', 'CRITIQUE', 'TWO-PARTY', 'DELIVER'];
+let _flowSkip = false;
+
+function flowRailHTML() {
+  return `
+    <div class="flow" id="flow-rail" onclick="_flowSkip = true">
+      <div class="flow-hint">Click to skip →</div>
+      <div class="flow-stages">
+        ${FLOW_STAGES.map((s, i) => `
+          ${i > 0 ? `<div class="flow-arrow" id="flow-arrow-${i}">→</div>` : ''}
+          <div class="flow-stage" id="flow-stage-${i}">
+            <div class="flow-dot"></div>
+            <div class="flow-label">${s}</div>
+            <div class="flow-detail" id="flow-detail-${i}"></div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="flow-gate" id="flow-gate"></div>
+    </div>
+  `;
+}
+
+async function flowPause(ms) {
+  // Real minimum pause for human perception, skipped entirely if the user
+  // clicked to skip or if the browser prefers reduced motion -- in neither
+  // case does the STAGE ORDER change, only whether we linger on it.
+  const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (_flowSkip || reducedMotion) return;
+  await new Promise(r => setTimeout(r, ms));
+}
+
+// Lights a stage the moment the real work for it has happened. `state` is
+// 'ok' | 'checking' | 'fail' -- always paired with an icon+word in the
+// detail text, never color alone (WCAG 1.4.1, client-flagged defect).
+async function flowStage(i, detail, state) {
+  if (_flowSkip) return;
+  const stageEl = document.getElementById(`flow-stage-${i}`);
+  if (!stageEl) return; // rail was removed (skip or already finished)
+  stageEl.classList.add('active');
+  if (state) stageEl.classList.add(state);
+  const detailEl = document.getElementById(`flow-detail-${i}`);
+  if (detailEl) detailEl.textContent = detail;
+  const arrow = document.getElementById(`flow-arrow-${i}`);
+  if (arrow) arrow.classList.add('active');
+  await flowPause(350);
+}
+
+function flowGateClosed(message) {
+  if (_flowSkip) return;
+  const gate = document.getElementById('flow-gate');
+  if (!gate) return;
+  gate.textContent = message;
+  gate.classList.add('show');
+}
+
+function flowRemove() {
+  const rail = document.getElementById('flow-rail');
+  if (rail) rail.remove();
+  _flowSkip = false;
+}
+
 async function show(html) {
   document.getElementById('steps').insertAdjacentHTML('beforeend', html);
   await new Promise(r => setTimeout(r, 40));
@@ -603,10 +837,22 @@ function fmtMinutes(startMs) {
 }
 
 async function run() {
+  const idx = parseInt(document.getElementById('questions').value);
+  await runTicket(QUESTIONS[idx]);
+}
+
+// Shared by preset cases AND live phone intake -- one pipeline, not two.
+// A ticket typed live goes through the exact same draft/critique/deliver
+// steps as any preset case; the only difference is where `p` came from.
+async function runTicket(p) {
   const t0 = performance.now();
   document.getElementById('steps').innerHTML = '';
-  const idx = parseInt(document.getElementById('questions').value);
-  const p = QUESTIONS[idx];
+
+  document.getElementById('steps').insertAdjacentHTML('beforeend', flowRailHTML());
+
+  // STAGE 0: INTAKE -- this IS the real intake data (channel/urgency), just
+  // read from `p`; the rail lights up the moment we display it.
+  await flowStage(0, `${p.channel} · ${p.urgency.toLowerCase()}`, 'ok');
 
   // STEP 1 -- ticket comes in on a channel, visible
   await show(stepHTML('', '1 · Ticket received',
@@ -617,12 +863,18 @@ async function run() {
 
   // STEP 2 -- Airbnb / short-term always escalates, no fact-based answer generated
   if (p.escalate) {
+    await flowStage(1, 'no covered topic', 'checking');
+    await flowStage(2, '—', 'checking');
+    await flowStage(3, 'out of scope — escalate', 'fail');
+    flowGateClosed('out of scope, escalating — flow stops here');
+    await flowPause(500);
+    flowRemove();
     await show(stepHTML('escalate', '2 · Escalation triggered', p.escalateReason));
     await show(stepHTML('escalate', '3 · Final response',
       `[${CHANNEL_LABEL[p.channel]}] This request needs direct attention from our staff -- I'm escalating it right now so someone can contact you with a specific answer. In the meantime you can check santamonica.gov/rentcontrol.` +
       `<div class="closing-question">Does this cover your question, or do you need more info?</div>`
     ));
-    renderTelemetry(idx, t0, true);
+    renderTelemetry(t0, true);
     return;
   }
 
@@ -633,35 +885,66 @@ async function run() {
   // landlord as for a tenant -- this is the case that proves it.
   if (p.partialEscalate) {
     const cited = p.topics.map(t => `${FACTS[t].label}: ${FACTS[t].value} [${FACTS[t].citation}]`).join(' — ');
+    await flowStage(1, `${p.topics.length} fact(s) matched`, 'ok');
+    await flowStage(2, 'partial draft assembled', 'ok');
+    await flowStage(3, 'partial — escalate remainder', 'checking');
+    flowGateClosed('general rule cited, specific case escalated');
+    await flowPause(500);
+    flowRemove();
     await show(stepHTML('', '2 · Draft (the one fact we can cite)', cited));
     await show(stepHTML('escalate', '3 · Critique: general rule cited, specific determination escalated', p.escalateReason));
     await show(stepHTML('escalate', '4 · Final response',
       `[${CHANNEL_LABEL[p.channel]}] Here's what applies in general: ${cited}. For your specific situation, this needs a full review by our staff -- I'm escalating it now so someone can walk through the details with you. In the meantime you can check santamonica.gov/rentcontrol.` +
       `<div class="closing-question">Does this cover your question, or do you need more info?</div>`
     ));
-    renderTelemetry(idx, t0, false, false, true);
+    renderTelemetry(t0, false, false, true);
     return;
   }
 
+  // STAGE 1: RETRIEVE -- real result of topic matching against p.topics.
+  await flowStage(1, `${(p.topics || []).length} fact(s) matched`, 'ok');
+
   // STEP 2 -- draft (not yet verified)
   let draft = p.topics.map(t => `${FACTS[t].label}: ${FACTS[t].value} [${FACTS[t].citation}]`).join(' — ');
-  if (p.forceFail) draft = 'the 2026 general adjustment is 8%, no source'; // deliberately off-spec draft, to show the critique genuinely catches it
-  await show(stepHTML('', '2 · Draft (not yet verified)', draft));
+  if (p.forceFail && p.topics.length) draft = 'the 2026 general adjustment is 8%, no source'; // deliberately off-spec draft (preset trap case), to show the critique genuinely catches it
+  await flowStage(2, 'assembled with citations', 'ok');
+  await show(stepHTML('', '2 · Draft (not yet verified)', draft || '(no matching topic found)'));
 
-  // STEP 3 -- CRITIQUE: real check against the facts table, can fail
+  // STAGE 3: CRITIQUE -- lights up 'checking' the instant we start the real
+  // verification loop below, THEN resolves to ok/fail based on what that
+  // loop actually finds. No stage here is decorative: the icon+word only
+  // appear once the check they describe has run.
+  await flowStage(3, 'checking against facts table…', 'checking');
+
+  // STEP 3 -- CRITIQUE: real check against the facts table, can fail.
+  // Never color-only (WCAG 1.4.1): every state carries an icon AND an
+  // explicit word (VERIFIED / BLOCKED), not just a color.
   const findings = [];
-  if (p.forceFail) {
-    findings.push('<div class="finding fail">✗ FAIL: "8%" does not appear in the official facts table — invented number detected</div>');
+  if (p.topics.length === 0) {
+    // Live phone intake (or any ticket) that matched no topic at all -- the
+    // honest failure, same as duck.py's "no relevant fact found" path.
+    findings.push('<div class="finding fail">✗ BLOCKED: no topic in this question matched anything in the official facts table</div>');
+  } else if (p.forceFail) {
+    findings.push('<div class="finding fail">✗ BLOCKED: "8%" does not appear in the official facts table — invented number detected</div>');
   } else {
     for (const t of p.topics) {
       if (draft.includes(FACTS[t].citation)) {
-        findings.push(`<div class="finding ok">✓ "${FACTS[t].label}" verified against ${FACTS[t].citation}</div>`);
+        findings.push(`<div class="finding ok">✓ VERIFIED: "${FACTS[t].label}" checked against ${FACTS[t].citation}</div>`);
       } else {
-        findings.push(`<div class="finding fail">✗ FAIL: "${t}" has no citation</div>`);
+        findings.push(`<div class="finding fail">✗ BLOCKED: "${t}" has no citation</div>`);
       }
     }
   }
   const failed = findings.some(h => h.includes('fail'));
+  // Resolve the CRITIQUE dot to what the check above actually found.
+  document.getElementById('flow-stage-3').classList.remove('checking');
+  document.getElementById('flow-stage-3').classList.add(failed ? 'fail' : 'ok');
+  document.getElementById('flow-detail-3').textContent = failed ? 'BLOCKED — uncited claim' : 'VERIFIED';
+  if (failed) {
+    flowGateClosed('critique failed, answer withheld — flow stops here');
+    await flowPause(500);
+    flowRemove();
+  }
   await show(stepHTML(failed ? 'critique-fail' : 'critique-ok', '3 · Critique (code, not another prompt)', findings.join('')));
 
   // STEP 4 -- final response: gentle fail. Same refusal (no citation, no
@@ -670,7 +953,7 @@ async function run() {
     await show(stepHTML('critique-fail', '4 · Final response (gentle fail)',
       `[${CHANNEL_LABEL[p.channel]}] ${GENTLE_FAIL[p.channel]}`
     ));
-    renderTelemetry(idx, t0, false, true);
+    renderTelemetry(t0, false, true);
     return;
   }
 
@@ -682,6 +965,13 @@ async function run() {
     <div class="party-card landlord"><div class="party-label">If you're a landlord</div><div class="party-fact">${TWO_PARTY[t].landlord}</div></div>
   `).join('');
 
+  // STAGE 4/5: critique passed, so the rail reaches TWO-PARTY and DELIVER --
+  // this only happens on the code path that actually built both.
+  await flowStage(4, partyCards ? 'tenant + landlord' : '—', 'ok');
+  await flowStage(5, `via ${p.channel}`, 'ok');
+  await flowPause(400);
+  flowRemove();
+
   await show(stepHTML('', '4 · Final response', finalHTML));
   if (partyCards) {
     await show(stepHTML('', '5 · How this applies to your situation', `<div class="two-party">${partyCards}</div>`));
@@ -690,10 +980,10 @@ async function run() {
     `<span class="closing-question">Does this cover your question, or do you need more info?</span>`
   ));
 
-  renderTelemetry(idx, t0, false, false);
+  renderTelemetry(t0, false, false);
 }
 
-function renderTelemetry(idx, t0, escalated, blocked, partialEscalated) {
+function renderTelemetry(t0, escalated, blocked, partialEscalated) {
   const elapsed = fmtMinutes(t0);
   let outcomeLabel = "Resolved without human staff";
   if (escalated) outcomeLabel = "Escalated to human staff (correct outcome — topic outside official source)";
