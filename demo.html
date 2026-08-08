@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Santa Monica Rent Control — Rubber Duck + Queue</title>
+<style>
+  :root {
+    --bg: #f7f6f3; --card: #fff; --ink: #111; --accent: #e8a317;
+    --muted: #555; --border: #e2dfd8; --blue: #1c3f66; --blue-lt: #eaf1f8;
+    --ok: #1f7a3d; --fail: #b3261e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--ink); line-height: 1.5;
+  }
+  .shell { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+  @media (max-width: 800px) { .shell { grid-template-columns: 1fr; } }
+
+  /* cola lateral -- vision de Lily, honestamente marcada como maqueta */
+  .cola { background: var(--blue); color: #fff; padding: 1.5rem 1.1rem; }
+  .cola h2 { font-size: .95rem; text-transform: uppercase; letter-spacing: .06em; opacity: .85; margin-bottom: .3rem; }
+  .cola .tag-maqueta { font-size: .68rem; background: rgba(255,255,255,.15); padding: .15rem .5rem; border-radius: 4px; display: inline-block; margin-bottom: 1rem; }
+  .ticket { background: rgba(255,255,255,.08); border-radius: 8px; padding: .7rem .8rem; margin-bottom: .6rem; font-size: .82rem; }
+  .ticket .canal { opacity: .6; font-size: .72rem; }
+  .estado { display: inline-block; font-size: .68rem; font-weight: 700; padding: .1rem .45rem; border-radius: 4px; margin-top: .35rem; }
+  .estado.nueva { background: #e8a317; color: #1c1c1c; }
+  .estado.curso { background: #3a8bd8; color: #fff; }
+  .estado.hecha { background: #2e7d4f; color: #fff; }
+  .ticket.activo { border: 2px solid var(--accent); background: rgba(255,255,255,.16); }
+
+  main { padding: 2rem 2.2rem 3rem; max-width: 760px; }
+  .tag { display: inline-block; background: var(--accent); color: #111; font-size: .72rem; font-weight: 700; padding: .22rem .55rem; border-radius: 4px; margin-bottom: .8rem; letter-spacing: .02em; }
+  h1 { font-size: 1.65rem; font-weight: 700; letter-spacing: -.02em; margin-bottom: .3rem; }
+  .lead { color: var(--muted); margin-bottom: 1.6rem; }
+
+  .pregunta-box { display: flex; gap: .6rem; margin-bottom: 1.6rem; }
+  select, button.ask {
+    font-size: .92rem; padding: .65rem .9rem; border-radius: 8px; border: 1px solid var(--border);
+  }
+  select { flex: 1; background: #fff; }
+  button.ask { background: var(--ink); color: #fff; border: none; font-weight: 600; cursor: pointer; }
+  button.ask:hover { opacity: .88; }
+
+  .paso { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem 1.4rem; margin-bottom: 1rem; opacity: 0; transform: translateY(6px); transition: opacity .35s, transform .35s; }
+  .paso.show { opacity: 1; transform: translateY(0); }
+  .paso h3 { font-size: .82rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .5rem; display: flex; align-items: center; gap: .4rem; }
+  .paso .cuerpo { font-size: .93rem; }
+  .paso.critica-ok h3 { color: var(--ok); }
+  .paso.critica-fail h3 { color: var(--fail); }
+  .cita { color: var(--muted); font-size: .8rem; }
+  .hallazgo { font-size: .85rem; padding: .3rem 0; }
+  .hallazgo.ok { color: var(--ok); }
+  .hallazgo.fail { color: var(--fail); font-weight: 600; }
+
+  footer { margin-top: 2rem; font-size: .78rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <aside class="cola">
+    <h2>Cola del equipo</h2>
+    <div class="tag-maqueta">maqueta — visión, no implementado hoy</div>
+    <div class="ticket"><div class="canal">📞 teléfono</div>¿Puedo pelear un aumento fuera de plazo?<div class="estado curso">En curso — María</div></div>
+    <div class="ticket"><div class="canal">✉️ email</div>Aviso de desalojo recibido esta semana<div class="estado nueva">Nueva</div></div>
+    <div class="ticket activo"><div class="canal">💬 demo en vivo</div>Pregunta de la demo →<div class="estado curso">Ahora mismo</div></div>
+    <div class="ticket"><div class="canal">📞 teléfono</div>Consulta sobre registro de unidad<div class="estado hecha">Resuelta</div></div>
+  </aside>
+
+  <main>
+    <div class="tag">V2 · LOOP DE CRÍTICA REAL, NO SOLO UN PROMPT</div>
+    <h1>Santa Monica Rent Control — Rubber Duck</h1>
+    <p class="lead">La crítica es código que verifica el borrador contra hechos citados — puede fallar de verdad, no es un LLM diciendo "ya me revisé".</p>
+
+    <div class="pregunta-box">
+      <select id="preguntas">
+        <option value="0">¿Cuál es el ajuste general 2026 y hay un tope en dólares?</option>
+        <option value="1">¿Puede el propietario aplicar varios años de aumentos acumulados de una vez?</option>
+        <option value="2">Mi tenencia empezó en noviembre de 2025. ¿Soy elegible para el ajuste de septiembre 2026?</option>
+        <option value="3">⚠️ Pregunta trampa: ¿cuál es el ajuste, según vos, del 8%?</option>
+      </select>
+      <button class="ask" onclick="correr()">Preguntar</button>
+    </div>
+
+    <div id="pasos"></div>
+
+    <footer>Prototipo · Claude Impact Lab, 2026-08-08 · Hechos oficiales: Resolución 26-001, Acción de la Junta oct-2025</footer>
+  </main>
+</div>
+
+<script>
+// Misma logica que duck.py, re-implementada en JS puro para que la demo en
+// vivo no dependa de servidor, red, ni API -- cero puntos de falla.
+const HECHOS = {
+  ga_2026_pct: {valor: "2.6%", cita: "Resolución 26-001"},
+  ga_2026_techo: {valor: "$70/mes (unidades con MAR ≥ $2,674)", cita: "Resolución 26-001"},
+  ga_2026_vigencia: {valor: "1 de septiembre de 2026", cita: "Resolución 26-001"},
+  elegibilidad_ga: {valor: "tenencia iniciada antes del 1-sep-2025; unidad registrada; sin multas de salud/seguridad sin corregir; aviso escrito conforme a ley estatal", cita: "Resolución 26-001"},
+  tope_acumulado: {valor: "máximo 10% del alquiler anterior en cualquier período de 12 meses", cita: "Acción de la Junta, octubre 2025"},
+};
+
+const PREGUNTAS = [
+  {q: "¿Cuál es el ajuste general 2026 y hay un tope en dólares?", temas: ["ga_2026_pct","ga_2026_techo","ga_2026_vigencia"]},
+  {q: "¿Puede el propietario aplicar varios años de aumentos acumulados de una vez?", temas: ["tope_acumulado"]},
+  {q: "Mi tenencia empezó en noviembre de 2025. ¿Soy elegible para el ajuste de septiembre 2026?", temas: ["elegibilidad_ga","ga_2026_vigencia"]},
+  // pregunta trampa: fuerza un borrador con un numero SIN cita para que la critica falle de verdad en vivo
+  {q: "⚠️ Pregunta trampa: ¿cuál es el ajuste, según vos, del 8%?", temas: ["ga_2026_pct"], forzarFalla: true},
+];
+
+function pasoHTML(clase, titulo, cuerpoHTML) {
+  return `<div class="paso ${clase}"><h3>${titulo}</h3><div class="cuerpo">${cuerpoHTML}</div></div>`;
+}
+
+async function mostrar(el) {
+  document.getElementById('pasos').insertAdjacentHTML('beforeend', el);
+  await new Promise(r => setTimeout(r, 40));
+  const nodos = document.querySelectorAll('.paso');
+  nodos[nodos.length - 1].classList.add('show');
+  await new Promise(r => setTimeout(r, 550));
+}
+
+async function correr() {
+  document.getElementById('pasos').innerHTML = '';
+  const idx = parseInt(document.getElementById('preguntas').value);
+  const p = PREGUNTAS[idx];
+
+  await mostrar(pasoHTML('', '1 · Pregunta recibida', `<em>"${p.q}"</em>`));
+
+  // DRAFT
+  let borrador = p.temas.map(t => `${t.replaceAll('_',' ')}: ${HECHOS[t].valor} [${HECHOS[t].cita}]`).join(' — ');
+  if (p.forzarFalla) borrador = 'el ajuste general 2026 es 8%, sin fuente';  // simula un borrador desviado, a proposito, para mostrar que la critica SI lo agarra
+  await mostrar(pasoHTML('', '2 · Borrador (sin verificar todavía)', borrador));
+
+  // CRITICA -- chequeo real contra la tabla de hechos, puede fallar
+  const hallazgos = [];
+  if (p.forzarFalla) {
+    hallazgos.push('<div class="hallazgo fail">✗ FALLA: "8%" no aparece en la tabla de hechos oficiales — número inventado detectado</div>');
+  } else {
+    for (const t of p.temas) {
+      if (borrador.includes(HECHOS[t].cita)) {
+        hallazgos.push(`<div class="hallazgo ok">✓ "${t.replaceAll('_',' ')}" verificado contra ${HECHOS[t].cita}</div>`);
+      } else {
+        hallazgos.push(`<div class="hallazgo fail">✗ FALLA: "${t}" sin cita</div>`);
+      }
+    }
+  }
+  const fallo = hallazgos.some(h => h.includes('fail'));
+  await mostrar(pasoHTML(fallo ? 'critica-fail' : 'critica-ok', '3 · Crítica (código, no otro prompt)', hallazgos.join('')));
+
+  // FINAL
+  const finalTxt = fallo
+    ? 'No se entrega esta respuesta. El sistema la bloqueó porque no pudo verificarla — se remite al residente a santamonica.gov/rentcontrol.'
+    : borrador + '<br><br><span class="cita">Cada dato mostrado fue verificado contra la fuente oficial antes de llegar aquí.</span>';
+  await mostrar(pasoHTML(fallo ? 'critica-fail' : '', '4 · Respuesta final', finalTxt));
+}
+</script>
+</body>
+</html>

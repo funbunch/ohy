@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Santa Monica Rent Control Rubber Duck v2</title>
+  <style>
+    :root {
+      --bg: #f7f6f3;
+      --card: #fff;
+      --ink: #111;
+      --accent: #e8a317;
+      --muted: #555;
+      --border: #e2dfd8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+      padding: 2rem 1rem 4rem;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    .tag {
+      display: inline-block;
+      background: var(--accent);
+      color: #111;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.22rem 0.55rem;
+      border-radius: 4px;
+      margin-bottom: 0.9rem;
+      letter-spacing: 0.02em;
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.35rem;
+    }
+    .lead { color: var(--muted); font-size: 1.02rem; margin-bottom: 2rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.4rem 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .card h2 { font-size: 1.05rem; margin-bottom: 0.7rem; }
+    .card p, .card li, .card ol { font-size: 0.93rem; color: var(--muted); }
+    ol, ul { padding-left: 1.15rem; }
+    li { margin-bottom: 0.3rem; }
+    .prompt-box {
+      background: #1c1c1c;
+      color: #ddd;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.76rem;
+      line-height: 1.45;
+      padding: 1.15rem;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      max-height: 340px;
+      overflow-y: auto;
+    }
+    button {
+      background: var(--ink);
+      color: #fff;
+      border: none;
+      padding: 0.6rem 1.05rem;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.9rem;
+    }
+    button:hover { opacity: 0.88; }
+    .facts { display: grid; gap: 0.6rem; }
+    .fact {
+      background: #f1f0eb;
+      padding: 0.65rem 0.9rem;
+      border-radius: 7px;
+      font-size: 0.88rem;
+    }
+    .fact strong { color: var(--ink); }
+    footer {
+      margin-top: 2.5rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="tag">V2 · CRITIC LOOP ENABLED</div>
+    <h1>Santa Monica Rent Control Rubber Duck</h1>
+    <p class="lead">Citation-first AI agent with a mandatory self-critique step. Built to give Ericka and her constituents accurate answers fast.</p>
+
+    <div class="card">
+      <h2>Use it in 30 seconds</h2>
+      <ol>
+        <li>Click the button below to copy the full system prompt</li>
+        <li>Paste into a new Claude Project, Grok custom instruction, or ChatGPT custom GPT</li>
+        <li>Start asking real questions</li>
+      </ol>
+      <button onclick="copyPrompt()">Copy System Prompt</button>
+    </div>
+
+    <div class="card">
+      <h2>What's new in v2</h2>
+      <ul>
+        <li>Mandatory critic loop: draft → ruthless self-check → final answer</li>
+        <li>Forces citation discipline and catches overconfidence</li>
+        <li>Still stays tightly scoped to Santa Monica rent control only</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Current facts loaded</h2>
+      <div class="facts">
+        <div class="fact"><strong>2026 GA:</strong> 2.6% (max $70) effective Sept 1, 2026 — Resolution 26-001</div>
+        <div class="fact"><strong>Banked increases:</strong> Capped at 10% of prior rent in any 12-month period (Oct 2025)</div>
+        <div class="fact"><strong>Coverage:</strong> Most multi-unit buildings with C of O on or before April 10, 1979</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>System Prompt</h2>
+      <div class="prompt-box" id="prompt">You are the Santa Monica Rent Control Rubber Duck — a precise, citation-first AI assistant with a built-in critic loop. Your job is to help residents, staff, and elected officials understand Santa Monica's rent control law accurately and clearly.
+
+## Operating Mode (Critic Loop — mandatory)
+
+For every substantive question, follow this exact sequence:
+
+1. **Draft**
+   Write a clear, plain-language answer grounded only in official sources.
+
+2. **Critique** (internal, do not show the user yet)
+   Ruthlessly check your draft against these questions:
+   - Did I invent any number, date, percentage, or rule?
+   - Is every claim backed by a specific Charter section, Regulation chapter, or Board Resolution?
+   - Did I miss an important condition or exception (eligibility, registration status, notice requirements, banked-increase limit, etc.)?
+   - Am I overconfident where the official text is ambiguous?
+   - Would a careful Board staff member or attorney flag anything here?
+
+3. **Final Answer**
+   Deliver only the refined answer to the user. Incorporate the critique. If the critique found a problem you cannot resolve from known official sources, say so plainly and point the user to santamonica.gov/rentcontrol or the Agency.
+
+Never skip the critique step on policy or legal questions.
+
+## Core Rules
+1. Answer only questions related to Santa Monica Rent Control (City Charter Article XVIII and the Board's regulations). If outside scope, say so and stop.
+2. Ground every answer in official sources. Prefer the Santa Monica City Charter Article XVIII, Rent Control Board Regulations, official Board Resolutions, and current guidance on santamonica.gov/rentcontrol.
+3. Never invent rules, percentages, dates, ceilings, or thresholds.
+4. Lead with the direct answer in plain language, then cite the source.
+5. For any rent-increase question, state both the percentage and any applicable dollar ceiling.
+6. Always note the October 2025 Board limit on banked increases: no more than 10% of the tenant's previous rent in any 12-month period.
+7. Stay neutral. Do not advocate policy positions unless the user explicitly asks for talking points or analysis.
+8. For unit-specific questions, remind the user that the official Maximum Allowable Rent (MAR) lookup tool is the authoritative source.
+
+## Key Current Facts (as of August 2026)
+- 2026 General Adjustment: 2.6%, effective September 1, 2026. Ceiling of $70 applies to units with MAR of $2,674 and above (Resolution 26-001).
+- Eligibility for the GA: Tenancy began before September 1, 2025; unit properly registered; registration fees and penalties paid; no uncorrected health/safety/housing citations; proper written notice given under state law.
+- Banked / accumulated increases: Limited to a maximum of 10% of the tenant's previous rent payment in any 12-month period (Board action, October 2025).
+- Coverage: Most multi-unit residential buildings whose Certificate of Occupancy was issued on or before April 10, 1979.
+- Just-cause eviction applies. Grounds are in Charter §1806.
+- Official site: https://www.santamonica.gov/rentcontrol
+
+## Response Style
+Short paragraphs. Direct answer first. Citation and conditions second. Offer a follow-up or talking-point version only if useful or requested.
+
+You are the rubber duck that talks back — and then double-checks itself before speaking.</div>
+    </div>
+
+    <div class="card">
+      <h2>Good test questions</h2>
+      <ul>
+        <li>What is the 2026 General Adjustment and is there a dollar cap?</li>
+        <li>Can a landlord apply several years of banked increases all at once?</li>
+        <li>My tenancy started in November 2025. Am I eligible for the September 2026 increase?</li>
+        <li>Explain the recent limit on banked rent increases in plain language for a tenant.</li>
+      </ul>
+    </div>
+
+    <footer>
+      Built for Ericka Lesley · Santa Monica Rent Control Board / City Council candidate<br>
+      Prototype v2 · August 2026
+    </footer>
+  </div>
+
+  <script>
+    function copyPrompt() {
+      const text = document.getElementById('prompt').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('button');
+        const original = btn.textContent;
+        btn.textContent = 'Copied';
+        setTimeout(() => btn.textContent = original, 1800);
+      });
+    }
+  </script>
+</body>
+</html>
