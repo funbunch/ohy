@@ -5,8 +5,11 @@ constituent-support queue so a team (not just one person) can use it.
 
 Built for Ericka Lesley and the residents of Santa Monica.
 
+**New here? Read [ELI5.md](ELI5.md)** — plain-English explanation, no jargon.
+
 ## What's here
 
+- `ELI5.md` — what this is and why it matters, in plain English
 - `SYSTEM_PROMPT.md` — the agent's full instructions (draft → critique → final answer)
 - `index.html` — original one-page prompt-sharing tool (Jennifer, v2)
 - `demo.html` — **the hackathon demo**: one question, in, through the critic loop, out — with a queue panel showing the team-support vision
