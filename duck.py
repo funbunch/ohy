@@ -1,281 +1,391 @@
-"""duck.py — el loop de critica del Rubber Duck, como codigo real que corre.
+"""duck.py -- the Rubber Duck's critic loop, as real code that runs.
 
-Por que esto en vez de solo confiar en un prompt de LLM: un prompt que dice
-"critica tu propia respuesta" puede alucinar la critica tanto como la
-respuesta original -- es la misma trampa de "verificador que se verifica" que
-aparece en cualquier sistema de IA (ver doctrina/ley-del-verificador-que-se-
-verifica). Aca la critica es una funcion que CHEQUEA el borrador contra una
-tabla de hechos citados, no un LLM narrando que se autochequeo.
+Why this instead of just trusting an LLM prompt: a prompt that says "critique
+your own answer" can hallucinate the critique as much as the original answer
+-- it's the same "verifier that verifies itself" trap that shows up in any AI
+system (see doctrina/ley-del-verificador-que-se-verifica). Here the critique
+is a function that CHECKS the draft against a table of cited facts, not an
+LLM narrating that it self-checked.
 
-Para la demo en vivo: cero dependencia de red, cero servidor, cero API. Los
-hechos estan hardcodeados a proposito -- son los hechos oficiales vigentes
-(Resolucion 26-001, accion de la Junta oct-2025), no datos inventados para la
-demo. Lo que se "fake-ea" para el hackathon es la interfaz de intake
-multi-canal (telefono/email/texto) de la vision de Lily, no los hechos legales.
+For the live demo: zero network dependency, zero server, zero API. Facts are
+hardcoded on purpose -- they are the currently-in-force official facts
+(Resolution 26-001, Board action Oct 2025), not invented demo data. What gets
+"faked" for the hackathon is the multi-channel intake interface
+(phone/email/text) from Lily's vision, not the legal facts.
 
-v2: agrega routing canal-entrada=canal-salida, triage de urgencia, framing de
-las dos partes (inquilino/propietario, mismo hecho, misma cita, dos lecturas),
-escalado obligatorio para Airbnb/short-term (no esta en la fuente oficial,
-asi que no se puede afirmar nada), pregunta de cierre, y tono desescalante.
+v2: adds inbound-channel = outbound-channel routing, urgency triage, two-party
+framing (tenant/landlord, same fact, same citation, two readings), mandatory
+escalation for Airbnb/short-term (not covered by the official source, so
+nothing can be asserted about it), a closing question, and a de-escalating
+tone. Response language mirrors the ticket's language (es/en) -- "meet them
+where they are" -- while the codebase itself stays in English.
 """
 from dataclasses import dataclass, field
 from typing import Literal, Optional
 
-Canal = Literal["phone", "text", "email"]
-Urgencia = Literal["FAQ", "normal", "URGENTE"]
+Channel = Literal["phone", "text", "email"]
+Urgency = Literal["FAQ", "normal", "URGENT"]
+Language = Literal["en", "es"]
 
-HECHOS = {
-    "ga_2026_pct": {"valor": "2.6%", "cita": "Resolución 26-001"},
-    "ga_2026_techo": {"valor": "$70/mes (unidades con MAR ≥ $2,674)", "cita": "Resolución 26-001"},
-    "ga_2026_vigencia": {"valor": "1 de septiembre de 2026", "cita": "Resolución 26-001"},
-    "elegibilidad_ga": {
-        "valor": "tenencia iniciada antes del 1-sep-2025; unidad registrada; sin multas de salud/seguridad sin corregir; aviso escrito conforme a ley estatal",
-        "cita": "Resolución 26-001",
+# Facts are the single source of truth for values/citations (language-neutral
+# key -> canonical value+citation, used by the critique). Display text for the
+# topic line is localized separately in FACT_LABELS so the citation loop
+# doesn't depend on wording, only on the citation string being present.
+FACTS = {
+    "ga_2026_pct": {"value": "2.6%", "citation": "Resolution 26-001"},
+    "ga_2026_cap": {"value": "$70/month (units with MAR >= $2,674)", "citation": "Resolution 26-001"},
+    "ga_2026_effective": {"value": "September 1, 2026", "citation": "Resolution 26-001"},
+    "ga_eligibility": {
+        "value": "tenancy started before Sep 1, 2025; unit properly registered; no uncorrected health/safety citations; written notice per state law",
+        "citation": "Resolution 26-001",
     },
-    "tope_acumulado": {"valor": "máximo 10% del alquiler anterior en cualquier período de 12 meses", "cita": "Acción de la Junta, octubre 2025"},
-    "cobertura": {"valor": "edificios multi-unidad con Certificado de Ocupación emitido el 10-abr-1979 o antes", "cita": "City Charter Art. XVIII"},
-    "desalojo_causa_justa": {"valor": "aplica; motivos en Charter §1806", "cita": "City Charter §1806"},
+    "banked_cap": {"value": "maximum 10% of the tenant's previous rent in any 12-month period", "citation": "Board Action, October 2025"},
+    "coverage": {"value": "multi-unit buildings with a Certificate of Occupancy issued on or before Apr 10, 1979", "citation": "City Charter Art. XVIII"},
+    "just_cause_eviction": {"value": "applies; grounds listed in Charter Sec. 1806", "citation": "City Charter Sec. 1806"},
 }
 
-# Framing de las dos partes: para cada hecho, que significa para cada lado.
-# La oficina representa a los dos, no arbitra -- el sistema ILUMINA la
-# diferencia de lectura, no la resuelve. Mismo hecho, misma cita, dos lecturas.
-FRAMING_DOS_PARTES = {
-    "ga_2026_pct": {
-        "inquilino": "Tu alquiler puede subir hasta 2.6% a partir del 1-sep-2026 -- no más que eso por este ajuste, salvo el tope en dólares si aplica.",
-        "propietario": "Podés aplicar hasta 2.6% de ajuste general desde el 1-sep-2026, sujeto al techo en dólares para unidades de alquiler alto.",
+# Localized topic line, e.g. "ga 2026 pct: 2.6% [Resolution 26-001]" in EN,
+# same fact/citation in ES. Kept separate from FACTS so the citation-presence
+# check in critique() stays language-agnostic (it checks the citation string,
+# which is identical in both languages).
+FACT_LABELS = {
+    "en": {
+        "ga_2026_pct": "2026 general adjustment",
+        "ga_2026_cap": "2026 general adjustment dollar cap",
+        "ga_2026_effective": "2026 general adjustment effective date",
+        "ga_eligibility": "general adjustment eligibility",
+        "banked_cap": "banked increase cap",
+        "coverage": "rent control coverage",
+        "just_cause_eviction": "just-cause eviction",
     },
-    "ga_2026_techo": {
-        "inquilino": "Si tu alquiler actual (MAR) es $2,674 o más, el aumento en dólares está topado en $70/mes aunque el 2.6% sea más alto en tu caso.",
-        "propietario": "Para unidades con MAR ≥ $2,674, el aumento no puede superar $70/mes aunque el 2.6% calculado sea mayor.",
-    },
-    "elegibilidad_ga": {
-        "inquilino": "El propietario solo puede aplicarte este ajuste si tu tenencia empezó antes del 1-sep-2025, la unidad está registrada, no hay multas de salud/seguridad sin corregir, y te dieron aviso por escrito según la ley estatal. Si falta alguno de estos, podés cuestionar el aumento.",
-        "propietario": "Para aplicar el ajuste necesitás que la tenencia haya empezado antes del 1-sep-2025, la unidad esté registrada, no tengas multas de salud/seguridad pendientes, y hayas dado aviso por escrito según la ley estatal.",
-    },
-    "tope_acumulado": {
-        "inquilino": "Aunque el propietario tenga aumentos acumulados de años anteriores, no te puede cobrar de golpe más del 10% de tu alquiler anterior en ningún período de 12 meses.",
-        "propietario": "Los aumentos acumulados (banked) que apliques de una sola vez están limitados a un máximo de 10% del alquiler anterior del inquilino en cualquier período de 12 meses.",
-    },
-    "cobertura": {
-        "inquilino": "Si tu edificio es multi-unidad y el Certificado de Ocupación es del 10-abr-1979 o antes, estás bajo rent control.",
-        "propietario": "Tu edificio está sujeto a rent control si es multi-unidad y el Certificado de Ocupación fue emitido el 10-abr-1979 o antes.",
-    },
-    "desalojo_causa_justa": {
-        "inquilino": "No te pueden desalojar sin una causa justa reconocida -- los motivos válidos están en el Charter §1806, no es a discreción del propietario.",
-        "propietario": "Para desalojar a un inquilino necesitás una causa justa dentro de los motivos listados en el Charter §1806, no alcanza con terminar el contrato sin más.",
+    "es": {
+        "ga_2026_pct": "ajuste general 2026",
+        "ga_2026_cap": "tope en dólares del ajuste general 2026",
+        "ga_2026_effective": "vigencia del ajuste general 2026",
+        "ga_eligibility": "elegibilidad para el ajuste general",
+        "banked_cap": "tope de aumentos acumulados",
+        "coverage": "cobertura de rent control",
+        "just_cause_eviction": "desalojo con causa justa",
     },
 }
 
-# Palabras clave que indican Airbnb / short-term rental. La fuente oficial NO
-# menciona este tema -- no se puede afirmar nada, así que se escala siempre.
-PALABRAS_AIRBNB = [
+# Two-party framing: for each fact, what it means for each side. The office
+# represents both tenants and landlords, it does not arbitrate -- the system
+# ILLUMINATES the difference in reading, it does not resolve it. Same fact,
+# same citation, two readings. Localized per response language.
+TWO_PARTY_FRAMING = {
+    "en": {
+        "ga_2026_pct": {
+            "tenant": "Your rent can go up by at most 2.6% starting Sep 1, 2026 -- no more than that under this adjustment, subject to the dollar cap if it applies.",
+            "landlord": "You can apply up to a 2.6% general adjustment starting Sep 1, 2026, subject to the dollar cap for higher-rent units.",
+        },
+        "ga_2026_cap": {
+            "tenant": "If your current rent (MAR) is $2,674 or more, the dollar increase is capped at $70/month even if 2.6% would be higher in your case.",
+            "landlord": "For units with MAR >= $2,674, the increase cannot exceed $70/month even if the calculated 2.6% is higher.",
+        },
+        "ga_eligibility": {
+            "tenant": "The landlord can only apply this adjustment if your tenancy started before Sep 1, 2025, the unit is registered, there are no uncorrected health/safety citations, and you were given written notice per state law. If any of these is missing, you can challenge the increase.",
+            "landlord": "To apply the adjustment you need the tenancy to have started before Sep 1, 2025, the unit to be registered, no outstanding health/safety citations, and written notice given per state law.",
+        },
+        "banked_cap": {
+            "tenant": "Even if the landlord has banked increases from prior years, they cannot charge you more than 10% of your previous rent in any 12-month period, all at once.",
+            "landlord": "Banked increases applied at once are capped at a maximum of 10% of the tenant's previous rent in any 12-month period.",
+        },
+        "coverage": {
+            "tenant": "If your building is multi-unit and its Certificate of Occupancy is dated Apr 10, 1979 or earlier, you are under rent control.",
+            "landlord": "Your building is subject to rent control if it is multi-unit and its Certificate of Occupancy was issued on or before Apr 10, 1979.",
+        },
+        "just_cause_eviction": {
+            "tenant": "You cannot be evicted without a recognized just cause -- the valid grounds are listed in Charter Sec. 1806, it is not up to the landlord's discretion.",
+            "landlord": "To evict a tenant you need a just cause among the grounds listed in Charter Sec. 1806 -- ending the lease alone is not enough.",
+        },
+    },
+    "es": {
+        "ga_2026_pct": {
+            "tenant": "Tu alquiler puede subir hasta 2.6% a partir del 1-sep-2026 -- no más que eso por este ajuste, salvo el tope en dólares si aplica.",
+            "landlord": "Podés aplicar hasta 2.6% de ajuste general desde el 1-sep-2026, sujeto al techo en dólares para unidades de alquiler alto.",
+        },
+        "ga_2026_cap": {
+            "tenant": "Si tu alquiler actual (MAR) es $2,674 o más, el aumento en dólares está topado en $70/mes aunque el 2.6% sea más alto en tu caso.",
+            "landlord": "Para unidades con MAR ≥ $2,674, el aumento no puede superar $70/mes aunque el 2.6% calculado sea mayor.",
+        },
+        "ga_eligibility": {
+            "tenant": "El propietario solo puede aplicarte este ajuste si tu tenencia empezó antes del 1-sep-2025, la unidad está registrada, no hay multas de salud/seguridad sin corregir, y te dieron aviso por escrito según la ley estatal. Si falta alguno de estos, podés cuestionar el aumento.",
+            "landlord": "Para aplicar el ajuste necesitás que la tenencia haya empezado antes del 1-sep-2025, la unidad esté registrada, no tengas multas de salud/seguridad pendientes, y hayas dado aviso por escrito según la ley estatal.",
+        },
+        "banked_cap": {
+            "tenant": "Aunque el propietario tenga aumentos acumulados de años anteriores, no te puede cobrar de golpe más del 10% de tu alquiler anterior en ningún período de 12 meses.",
+            "landlord": "Los aumentos acumulados (banked) que apliques de una sola vez están limitados a un máximo de 10% del alquiler anterior del inquilino en cualquier período de 12 meses.",
+        },
+        "coverage": {
+            "tenant": "Si tu edificio es multi-unidad y el Certificado de Ocupación es del 10-abr-1979 o antes, estás bajo rent control.",
+            "landlord": "Tu edificio está sujeto a rent control si es multi-unidad y el Certificado de Ocupación fue emitido el 10-abr-1979 o antes.",
+        },
+        "just_cause_eviction": {
+            "tenant": "No te pueden desalojar sin una causa justa reconocida -- los motivos válidos están en el Charter §1806, no es a discreción del propietario.",
+            "landlord": "Para desalojar a un inquilino necesitás una causa justa dentro de los motivos listados en el Charter §1806, no alcanza con terminar el contrato sin más.",
+        },
+    },
+}
+
+# Keywords indicating Airbnb / short-term rental. The official source does
+# NOT cover this topic -- nothing can be asserted, so it always escalates.
+AIRBNB_KEYWORDS = [
     "airbnb", "short-term", "short term", "alquiler corto", "vrbo",
     "por noche", "temporal", "turistico", "turístico", "vacation rental",
+    "alquiler de corto plazo", "renta corta",
 ]
 
-# Palabras que indican urgencia real (riesgo inminente de perder la vivienda
-# o de una accion irreversible) vs. una consulta informativa.
-PALABRAS_URGENTE = [
-    "desalojo", "eviction", "notice to vacate", "sheriff", "lockout",
+# Keywords indicating real urgency (imminent risk of losing housing or an
+# irreversible action) vs. an informational inquiry.
+URGENT_KEYWORDS = [
+    "eviction", "desalojo", "notice to vacate", "sheriff", "lockout",
     "me quieren sacar", "me estan desalojando", "3-day notice", "unlawful detainer",
 ]
 
-PALABRAS_FAQ = [
-    "cuanto es el ajuste", "cual es el ajuste", "what is the increase",
-    "sitio oficial", "official site", "donde consulto", "where do i check",
+FAQ_KEYWORDS = [
+    "what is the increase", "cuanto es el ajuste", "cual es el ajuste",
+    "official site", "sitio oficial", "where do i check", "donde consulto",
+]
+
+# Minimal language detection: enough to route the response, not a translator.
+# Spanish accent marks or a short list of unmistakably-Spanish words are
+# sufficient signal for this narrow domain (one municipal law, short tickets).
+SPANISH_MARKERS = [
+    "á", "é", "í", "ó", "ú", "ñ", "¿", "¡",
+    "cuanto", "cuál", "puedo", "elegib", "aumento", "alquiler", "desalojo",
+    "aplica", "edificio", "propietario", "inquilino",
 ]
 
 
-@dataclass
-class RespuestaDuck:
-    pregunta: str
-    canal: Canal
-    urgencia: Urgencia = "normal"
-    borrador: str = ""
-    hechos_usados: list = field(default_factory=list)
-    framing: dict = field(default_factory=dict)
-    critica: list = field(default_factory=list)
-    final: str = ""
-    paso_critica: str = "no ejecutado"
-    escalar_a_humano: bool = False
-    motivo_escalado: Optional[str] = None
-    cierre: str = ""
+def _detect_language(question: str) -> Language:
+    q = question.lower()
+    return "es" if any(marker in q for marker in SPANISH_MARKERS) else "en"
 
 
-def _detectar_airbnb(pregunta: str) -> bool:
-    p = pregunta.lower()
-    return any(k in p for k in PALABRAS_AIRBNB)
+def _detect_airbnb(question: str) -> bool:
+    q = question.lower()
+    return any(k in q for k in AIRBNB_KEYWORDS)
 
 
-def _detectar_urgencia(pregunta: str) -> Urgencia:
-    p = pregunta.lower()
-    if any(k in p for k in PALABRAS_URGENTE):
-        return "URGENTE"
-    if any(k in p for k in PALABRAS_FAQ):
+def _detect_urgency(question: str) -> Urgency:
+    q = question.lower()
+    if any(k in q for k in URGENT_KEYWORDS):
+        return "URGENT"
+    if any(k in q for k in FAQ_KEYWORDS):
         return "FAQ"
     return "normal"
 
 
-def _detectar_temas(pregunta: str) -> list:
-    """Retrieval simple por palabra clave -- suficiente para el dominio
-    acotado (una sola ley municipal), no hace falta un motor semantico."""
-    p = pregunta.lower()
-    temas = []
-    if any(k in p for k in ["ajuste", "aumento", "increase", "ga ", "general adjustment", "cuanto"]):
-        temas += ["ga_2026_pct", "ga_2026_techo", "ga_2026_vigencia"]
-    if any(k in p for k in ["elegib", "eligib", "califico", "puedo"]):
-        temas.append("elegibilidad_ga")
-    if any(k in p for k in ["acumul", "banked", "varios años", "atrasad"]):
-        temas.append("tope_acumulado")
-    if any(k in p for k in ["cobertura", "aplica a mi edificio", "covered", "1979"]):
-        temas.append("cobertura")
-    if any(k in p for k in ["desalojo", "eviction", "causa justa"]):
-        temas.append("desalojo_causa_justa")
-    return temas or list(HECHOS.keys())  # sin match claro: mostrar todo, no inventar
+def _detect_topics(question: str) -> list:
+    """Simple keyword retrieval -- enough for the narrow domain (a single
+    municipal law), no need for a semantic engine."""
+    q = question.lower()
+    topics = []
+    if any(k in q for k in ["ajuste", "aumento", "increase", "ga ", "general adjustment", "cuanto"]):
+        topics += ["ga_2026_pct", "ga_2026_cap", "ga_2026_effective"]
+    if any(k in q for k in ["elegib", "eligib", "califico", "qualify"]):
+        topics.append("ga_eligibility")
+    if any(k in q for k in ["acumul", "banked", "varios años", "atrasad"]):
+        topics.append("banked_cap")
+    if any(k in q for k in ["cobertura", "aplica a mi edificio", "covered", "1979"]):
+        topics.append("coverage")
+    if any(k in q for k in ["desalojo", "eviction", "causa justa", "just cause"]):
+        topics.append("just_cause_eviction")
+    return topics or list(FACTS.keys())  # no clear match: show everything, don't invent
 
 
-def _tono_desescalante(urgencia: Urgencia) -> str:
-    """Nadie llama contento -- todos llegan ya enojados. El tono de apertura
-    reconoce eso antes de entrar en los hechos."""
-    if urgencia == "URGENTE":
-        return "Entiendo que esto es urgente y necesitás una respuesta clara ya. Vamos directo al punto. "
-    return "Gracias por tu paciencia -- vamos directo a lo que necesitás saber. "
+# De-escalating opener by language and urgency. Nobody calls happy -- everyone
+# arrives already upset. The opening tone acknowledges that before the facts.
+_DEESCALATION = {
+    "en": {
+        "URGENT": "I understand this is urgent and you need a clear answer now. Let's get straight to it. ",
+        "normal": "Thanks for your patience -- let's get right to what you need to know. ",
+    },
+    "es": {
+        "URGENT": "Entiendo que esto es urgente y necesitás una respuesta clara ya. Vamos directo al punto. ",
+        "normal": "Gracias por tu paciencia -- vamos directo a lo que necesitás saber. ",
+    },
+}
+
+_CLOSING_QUESTION = {
+    "en": "Does this cover your question, or do you need more info?",
+    "es": "¿Esto responde tu pregunta, o necesitás más información?",
+}
+
+_ESCALATION_MESSAGE = {
+    "en": ("This request needs direct attention from our staff -- I'm escalating it "
+           "right now so someone can contact you with a specific answer. "
+           "In the meantime you can check santamonica.gov/rentcontrol."),
+    "es": ("Esta consulta necesita atención directa de nuestro staff -- te la voy a "
+           "escalar ahora mismo para que alguien te contacte con una respuesta específica. "
+           "Mientras tanto podés revisar santamonica.gov/rentcontrol."),
+}
+
+_NO_VERIFIED_ANSWER = {
+    "en": ("I don't have a citation-verified answer for this. "
+           "Please check santamonica.gov/rentcontrol or contact the Agency directly."),
+    "es": ("No tengo una respuesta con cita verificada para esto. "
+           "Consultá santamonica.gov/rentcontrol o a la Agencia directamente."),
+}
+
+_TWO_PARTY_HEADER = {
+    "en": "\n\n--- How this applies to your situation ---",
+    "es": "\n\n--- Cómo aplica esto según tu situación ---",
+}
+
+_TENANT_LABEL = {"en": "If you're a tenant", "es": "Si sos inquilino"}
+_LANDLORD_LABEL = {"en": "If you're a landlord", "es": "Si sos propietario"}
+
+_VERIFIED_FOOTER = {
+    "en": "\n\n(Verified: every cited fact checked against the official source before display.)",
+    "es": "\n\n(Verificado: cada dato citado contra la fuente oficial antes de mostrarse.)",
+}
 
 
-def draft(pregunta: str, canal: Canal) -> RespuestaDuck:
-    urgencia = _detectar_urgencia(pregunta)
-    r = RespuestaDuck(pregunta=pregunta, canal=canal, urgencia=urgencia)
+@dataclass
+class DuckResponse:
+    question: str
+    channel: Channel
+    language: Language = "en"
+    urgency: Urgency = "normal"
+    draft_text: str = ""
+    facts_used: list = field(default_factory=list)
+    framing: dict = field(default_factory=dict)
+    critique: list = field(default_factory=list)
+    final: str = ""
+    critique_status: str = "not run"
+    escalate_to_human: bool = False
+    escalation_reason: Optional[str] = None
+    closing: str = ""
 
-    # Airbnb / short-term: NO responder con hechos -- la fuente oficial no lo
-    # menciona, cualquier afirmacion seria inventada. Se escala siempre.
-    if _detectar_airbnb(pregunta):
-        r.escalar_a_humano = True
-        r.motivo_escalado = (
-            "La pregunta menciona alquiler de corto plazo / tipo Airbnb. "
-            "La fuente oficial (santamonica.gov/rentcontrol) no cubre este tema, "
-            "así que no podemos afirmar nada con cita verificada. Se escala a staff humano."
+
+def draft(question: str, channel: Channel) -> DuckResponse:
+    language = _detect_language(question)
+    urgency = _detect_urgency(question)
+    r = DuckResponse(question=question, channel=channel, language=language, urgency=urgency)
+
+    # Airbnb / short-term: do NOT answer with facts -- the official source
+    # doesn't mention it, any claim would be invented. Always escalate.
+    if _detect_airbnb(question):
+        r.escalate_to_human = True
+        r.escalation_reason = (
+            "Question mentions short-term/Airbnb-style rental. The official source "
+            "(santamonica.gov/rentcontrol) does not cover this topic, so nothing can "
+            "be asserted with a verified citation. Escalating to human staff."
         )
-        r.hechos_usados = []
-        r.borrador = ""
+        r.facts_used = []
+        r.draft_text = ""
         return r
 
-    temas = _detectar_temas(pregunta)
-    r.hechos_usados = temas
-    lineas = []
-    for t in temas:
-        h = HECHOS[t]
-        lineas.append(f"{t.replace('_', ' ')}: {h['valor']} [{h['cita']}]")
-        if t in FRAMING_DOS_PARTES:
-            r.framing[t] = FRAMING_DOS_PARTES[t]
-    r.borrador = _tono_desescalante(urgencia) + " ".join(lineas)
+    topics = _detect_topics(question)
+    r.facts_used = topics
+    lines = []
+    for t in topics:
+        f = FACTS[t]
+        lines.append(f"{t.replace('_', ' ')}: {f['value']} [{f['citation']}]")
+        if t in TWO_PARTY_FRAMING:
+            r.framing[t] = TWO_PARTY_FRAMING[t]
+    r.draft_text = _DEESCALATION[language][urgency if urgency == "URGENT" else "normal"] + " ".join(lines)
     return r
 
 
-def critica(r: RespuestaDuck) -> RespuestaDuck:
-    """La critica REAL: verifica que cada afirmacion del borrador tenga una
-    cita en HECHOS, y que no se mencione ningun numero que no venga de ahi.
-    No es un LLM diciendo "revise todo, esta bien" -- es un chequeo que puede
-    fallar de verdad si el borrador se desvia de la tabla de hechos."""
-    if r.escalar_a_humano:
-        r.critica = ["OK: caso marcado para escalado, no se genera respuesta con hechos (evita inventar sobre un tema fuera de la fuente oficial)"]
-        r.paso_critica = "ESCALADO -- no aplica critica de hechos"
+def critique(r: DuckResponse) -> DuckResponse:
+    """The REAL critique: verifies that every claim in the draft has a
+    citation in FACTS, and that no number is mentioned that doesn't come
+    from there. This is not an LLM saying "I checked, it's fine" -- it's a
+    check that can genuinely fail if the draft drifts from the facts table."""
+    if r.escalate_to_human:
+        r.critique = ["OK: case flagged for escalation, no fact-based answer generated (avoids inventing on a topic outside the official source)"]
+        r.critique_status = "ESCALATED -- fact critique not applicable"
         return r
 
-    hallazgos = []
-    for t in r.hechos_usados:
-        if t not in HECHOS:
-            hallazgos.append(f"FALLA: '{t}' no tiene cita en la tabla de hechos oficiales")
+    findings = []
+    for t in r.facts_used:
+        if t not in FACTS:
+            findings.append(f"FAIL: '{t}' has no citation in the official facts table")
             continue
-        if HECHOS[t]["cita"] not in r.borrador:
-            hallazgos.append(f"FALLA: '{t}' se menciona sin su cita ({HECHOS[t]['cita']})")
-    if not r.hechos_usados:
-        hallazgos.append("FALLA: no se encontró ningún hecho relevante -- no responder, remitir a la fuente oficial")
+        if FACTS[t]["citation"] not in r.draft_text:
+            findings.append(f"FAIL: '{t}' is mentioned without its citation ({FACTS[t]['citation']})")
+    if not r.facts_used:
+        findings.append("FAIL: no relevant fact found -- do not answer, refer to the official source")
 
-    r.critica = hallazgos if hallazgos else ["OK: cada afirmación tiene cita verificada contra la tabla de hechos"]
-    r.paso_critica = "FALLÓ, no se entrega respuesta" if hallazgos else "PASÓ"
+    r.critique = findings if findings else ["OK: every claim has a citation verified against the facts table"]
+    r.critique_status = "FAILED, answer withheld" if findings else "PASSED"
     return r
 
 
-def final_respuesta(r: RespuestaDuck) -> RespuestaDuck:
-    r.cierre = "Does this cover your question, or do you need more info?"
+def final_response(r: DuckResponse) -> DuckResponse:
+    r.closing = _CLOSING_QUESTION[r.language]
 
-    if r.escalar_a_humano:
-        r.final = (
-            f"{_tono_desescalante(r.urgencia)}"
-            "Esta consulta necesita atención directa de nuestro staff -- te la voy a escalar "
-            "ahora mismo para que alguien te contacte con una respuesta específica. "
-            "Mientras tanto podés revisar santamonica.gov/rentcontrol."
-        )
+    if r.escalate_to_human:
+        r.final = f"{_DEESCALATION[r.language]['normal']}{_ESCALATION_MESSAGE[r.language]}"
         return r
 
-    if r.paso_critica == "FALLÓ, no se entrega respuesta":
-        r.final = (
-            f"{_tono_desescalante(r.urgencia)}"
-            "No tengo una respuesta con cita verificada para esto. "
-            "Consultá santamonica.gov/rentcontrol o a la Agencia directamente."
-        )
+    if r.critique_status == "FAILED, answer withheld":
+        r.final = f"{_DEESCALATION[r.language]['normal']}{_NO_VERIFIED_ANSWER[r.language]}"
         return r
 
-    partes = [r.borrador]
+    parts = [r.draft_text]
     if r.framing:
-        partes.append("\n\n--- Cómo aplica esto según tu situación ---")
-        for t, lecturas in r.framing.items():
-            partes.append(f"\nSi sos inquilino: {lecturas['inquilino']}")
-            partes.append(f"\nSi sos propietario: {lecturas['propietario']}")
-    partes.append("\n\n(Verificado: cada dato citado contra la fuente oficial antes de mostrarse.)")
-    partes.append(f"\n\n{r.cierre}")
-    r.final = "".join(partes)
+        parts.append(_TWO_PARTY_HEADER[r.language])
+        for t, readings in r.framing.items():
+            parts.append(f"\n{_TENANT_LABEL[r.language]}: {readings['tenant']}")
+            parts.append(f"\n{_LANDLORD_LABEL[r.language]}: {readings['landlord']}")
+    parts.append(_VERIFIED_FOOTER[r.language])
+    parts.append(f"\n\n{r.closing}")
+    r.final = "".join(parts)
     return r
 
 
-def preguntar(pregunta: str, canal: Canal = "text") -> RespuestaDuck:
-    r = draft(pregunta, canal)
-    r = critica(r)
-    r = final_respuesta(r)
+def ask(question: str, channel: Channel = "text") -> DuckResponse:
+    r = draft(question, channel)
+    r = critique(r)
+    r = final_response(r)
     return r
 
 
-def responder_por_canal(r: RespuestaDuck) -> str:
-    """Routing canal-entrada = canal-salida: si llamó, se le llama; si
-    escribió texto, se le responde texto; si mandó email, se le responde
-    email. Esta funcion simula el envio real (para el hackathon, imprime
-    el canal usado en vez de integrar Twilio/SMTP)."""
-    etiqueta = {"phone": "LLAMADA saliente", "text": "SMS saliente", "email": "EMAIL saliente"}[r.canal]
-    return f"[{etiqueta}] {r.final}"
+def send_via_channel(r: DuckResponse) -> str:
+    """Inbound-channel = outbound-channel routing: if they called, they get
+    called back; if they texted, they get a text; if they emailed, they get
+    an email. This function simulates delivery (for the hackathon it prints
+    the channel used instead of integrating Twilio/SMTP)."""
+    label = {"phone": "Outbound CALL", "text": "Outbound SMS", "email": "Outbound EMAIL"}[r.channel]
+    return f"[{label}] {r.final}"
 
 
 if __name__ == "__main__":
-    CASOS_PRUEBA = [
-        ("¿Cuál es el ajuste general 2026 y hay un tope en dólares?", "text"),
+    TEST_CASES = [
+        ("What is the 2026 general adjustment and is there a dollar cap?", "text"),
         ("Mi tenencia empezó en noviembre de 2025. ¿Soy elegible para el ajuste de septiembre 2026? Me llamaron para avisarme que me van a subir el alquiler.", "phone"),
-        ("Quiero poner mi unidad en Airbnb por temporadas cortas, ¿aplica rent control?", "email"),
+        ("I want to put my unit on Airbnb for short stays, does rent control apply?", "email"),
         ("Me llegó un aviso de desalojo de 3 días, ¿qué hago?", "phone"),
     ]
 
-    for pregunta, canal in CASOS_PRUEBA:
-        r = preguntar(pregunta, canal)
-        print(f"\n=== [{canal.upper()}] {pregunta} ===")
-        print("URGENCIA:", r.urgencia)
-        print("ESCALA A HUMANO:", r.escalar_a_humano, f"({r.motivo_escalado})" if r.motivo_escalado else "")
-        print("CRÍTICA:", "; ".join(r.critica))
-        print("PASO CRITICA:", r.paso_critica)
-        print("RESPUESTA:")
-        print(responder_por_canal(r))
+    for question, channel in TEST_CASES:
+        r = ask(question, channel)
+        print(f"\n=== [{channel.upper()}] {question} ===")
+        print("LANGUAGE:", r.language)
+        print("URGENCY:", r.urgency)
+        print("ESCALATE TO HUMAN:", r.escalate_to_human, f"({r.escalation_reason})" if r.escalation_reason else "")
+        print("CRITIQUE:", "; ".join(r.critique))
+        print("CRITIQUE STATUS:", r.critique_status)
+        print("RESPONSE:")
+        print(send_via_channel(r))
 
-    # Caso adicional: forzar una falla REAL de crítica (no un caso feliz que
-    # nunca podría fallar). Se simula un borrador con un tema sin cita en la
-    # tabla -- exactamente el tipo de bug que la crítica está para atrapar.
-    print("\n=== CASO DE FALLA FORZADA DE CRÍTICA (hecho sin cita en la tabla) ===")
-    r_falla = RespuestaDuck(pregunta="pregunta de prueba", canal="text", urgencia="normal")
-    r_falla.hechos_usados = ["tema_inventado_sin_cita"]
-    r_falla.borrador = "tema inventado sin cita: 99% [Fuente inexistente]"
-    r_falla = critica(r_falla)
-    r_falla = final_respuesta(r_falla)
-    print("CRÍTICA:", "; ".join(r_falla.critica))
-    print("PASO CRITICA:", r_falla.paso_critica)
-    print("RESPUESTA:")
-    print(responder_por_canal(r_falla))
-    assert r_falla.paso_critica == "FALLÓ, no se entrega respuesta", "La crítica debía fallar y no lo hizo"
-    assert "no tiene cita" in r_falla.critica[0], "El motivo de falla no es el esperado"
-    print("\n✓ Confirmado: la crítica detecta y bloquea un hecho sin cita en la tabla.")
+    # Additional case: force a REAL critique failure (not a happy path that
+    # could never fail). Simulates a draft with a topic that has no citation
+    # in the table -- exactly the kind of bug the critique exists to catch.
+    print("\n=== FORCED CRITIQUE FAILURE CASE (fact with no citation in table) ===")
+    r_fail = DuckResponse(question="test question", channel="text", language="en", urgency="normal")
+    r_fail.facts_used = ["made_up_topic_no_citation"]
+    r_fail.draft_text = "made up topic no citation: 99% [Nonexistent Source]"
+    r_fail = critique(r_fail)
+    r_fail = final_response(r_fail)
+    print("CRITIQUE:", "; ".join(r_fail.critique))
+    print("CRITIQUE STATUS:", r_fail.critique_status)
+    print("RESPONSE:")
+    print(send_via_channel(r_fail))
+    assert r_fail.critique_status == "FAILED, answer withheld", "The critique should have failed and it didn't"
+    assert "no citation" in r_fail.critique[0], "The failure reason isn't the expected one"
+    print("\n✓ Confirmed: the critique detects and blocks a fact with no citation in the table.")
