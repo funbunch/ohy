@@ -110,6 +110,24 @@
   .speed-val { width: 100px; flex-shrink: 0; font-weight: 600; font-size: .8rem; }
   .speed-trend { color: var(--ok); font-weight: 700; font-size: .72rem; }
   .coverage-row, .requeue-row { font-size: .88rem; padding: .35rem 0; }
+
+  /* address search (mockup, sample data) */
+  .addr-row { display: flex; justify-content: space-between; align-items: center; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: .8rem 1rem; margin-bottom: .5rem; cursor: pointer; transition: border-color .15s; }
+  .addr-row:hover { border-color: var(--accent); }
+  .addr-row.selected { border-color: var(--accent); background: #fdf6e8; }
+  .addr-name { font-weight: 600; font-size: .92rem; }
+  .addr-meta { font-size: .78rem; color: var(--muted); }
+  .addr-count { display: flex; align-items: center; gap: .5rem; }
+  .addr-count-num { font-size: 1.2rem; font-weight: 700; }
+  .addr-count-num.high { color: var(--fail); }
+  .addr-count-num.med { color: var(--landlord); }
+  .addr-count-num.low { color: var(--muted); }
+  .addr-detail-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem 1.4rem; margin-top: 1rem; }
+  .addr-detail-card h3 { font-size: 1.05rem; margin-bottom: .3rem; }
+  .addr-case-row { display: flex; justify-content: space-between; padding: .5rem 0; border-bottom: 1px solid var(--border); font-size: .86rem; }
+  .addr-case-row:last-child { border-bottom: none; }
+  .addr-case-topic { font-weight: 600; }
+  .addr-case-date { color: var(--muted); }
 </style>
 </head>
 <body>
@@ -191,6 +209,21 @@
       </div>
 
       <footer style="margin-top:1.6rem;">Mockup only — no case data shown here is real. Field structure reflects the client's request, not a working integration.</footer>
+    </div>
+
+    <div id="tab-address" style="display:none;">
+      <div class="tag" style="background:#eee;color:var(--muted);">MOCKUP — SAMPLE DATA, NOT REAL ADDRESSES OR PEOPLE</div>
+      <h1>Address Search</h1>
+      <p class="lead">"My boss calls me and says: I got a call about this address, it has a bunch of complaints" — client, verbatim. Search an address, see everything together. Click a high-volume one, and it becomes actionable.</p>
+
+      <div class="question-box">
+        <input type="text" id="address-search-input" placeholder="Search sample address (e.g. EXAMPLE AVE)..." oninput="filterAddresses()" style="flex:1; font-size:.92rem; padding:.65rem .9rem; border-radius:8px; border:1px solid var(--border);">
+      </div>
+
+      <div id="address-list"></div>
+      <div id="address-detail"></div>
+
+      <footer style="margin-top:1.6rem;">Sample data only. All addresses, names, and complaint counts below are fabricated for demonstration -- none refer to a real Santa Monica address, property, or person.</footer>
     </div>
   </main>
 </div>
@@ -299,8 +332,88 @@ const CHANNEL_LABEL = {phone: "Outbound call", text: "Outbound SMS", email: "Out
 function switchTab(tab) {
   document.getElementById('tab-demo').style.display = tab === 'demo' ? '' : 'none';
   document.getElementById('tab-supervisor').style.display = tab === 'supervisor' ? '' : 'none';
+  document.getElementById('tab-address').style.display = tab === 'address' ? '' : 'none';
   document.getElementById('tab-btn-demo').classList.toggle('active', tab === 'demo');
   document.getElementById('tab-btn-supervisor').classList.toggle('active', tab === 'supervisor');
+  document.getElementById('tab-btn-address').classList.toggle('active', tab === 'address');
+  if (tab === 'address' && !window.__addressesRendered) {
+    renderAddressList([...SAMPLE_ADDRESSES].sort((a, b) => b.complaints - a.complaints));
+    window.__addressesRendered = true;
+  }
+}
+
+// SAMPLE DATA ONLY -- these addresses, names, and complaint counts are
+// fabricated for the demo. None refer to a real Santa Monica address,
+// property, or person (red line from the client conversation: inventing a
+// "landlord with many complaints" against a real address would be asserting
+// a real-world record about a real person -- that's not a demo, that's
+// defamation). Addresses are deliberately synthetic (EXAMPLE/SAMPLE/TEST).
+const SAMPLE_ADDRESSES = [
+  { address: "1200 EXAMPLE AVE, Unit 4B", complaints: 11, cases: [
+      { topic: "Noise / lease violation (not rent-control)", date: "2026-06-02" },
+      { topic: "General adjustment eligibility question", date: "2026-05-14" },
+      { topic: "Just-cause eviction inquiry", date: "2026-04-28" },
+      { topic: "Banked increase dispute", date: "2026-03-19" },
+      { topic: "Registration status question", date: "2026-02-25" },
+  ]},
+  { address: "45 SAMPLE ST, Unit 2", complaints: 7, cases: [
+      { topic: "General adjustment dollar cap question", date: "2026-05-30" },
+      { topic: "Coverage question (Certificate of Occupancy)", date: "2026-04-11" },
+      { topic: "Just-cause eviction inquiry", date: "2026-01-22" },
+  ]},
+  { address: "300 TEST BLVD, Unit 1A", complaints: 4, cases: [
+      { topic: "General adjustment eligibility question", date: "2026-05-02" },
+      { topic: "Banked increase dispute", date: "2026-02-08" },
+  ]},
+  { address: "88 DEMO LN, Unit 7", complaints: 2, cases: [
+      { topic: "Registration status question", date: "2026-03-30" },
+  ]},
+  { address: "1500 PLACEHOLDER DR, Unit 3", complaints: 1, cases: [
+      { topic: "General adjustment eligibility question", date: "2026-06-10" },
+  ]},
+];
+
+function volumeClass(n) {
+  if (n >= 8) return 'high';
+  if (n >= 4) return 'med';
+  return 'low';
+}
+
+function renderAddressList(list) {
+  const html = list.map((a, i) => `
+    <div class="addr-row" onclick="showAddressDetail(${SAMPLE_ADDRESSES.indexOf(a)})">
+      <div>
+        <div class="addr-name">${a.address}</div>
+        <div class="addr-meta">last 6 months</div>
+      </div>
+      <div class="addr-count">
+        <span class="addr-count-num ${volumeClass(a.complaints)}">${a.complaints}</span>
+        <span class="addr-meta">complaint${a.complaints === 1 ? '' : 's'}</span>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('address-list').innerHTML = html || '<p class="addr-meta">No matching sample addresses.</p>';
+}
+
+function filterAddresses() {
+  const q = document.getElementById('address-search-input').value.toLowerCase();
+  const filtered = SAMPLE_ADDRESSES.filter(a => a.address.toLowerCase().includes(q));
+  renderAddressList(filtered.sort((a, b) => b.complaints - a.complaints));
+  document.getElementById('address-detail').innerHTML = '';
+}
+
+function showAddressDetail(idx) {
+  const a = SAMPLE_ADDRESSES[idx];
+  const caseRows = a.cases.map(c => `
+    <div class="addr-case-row"><span class="addr-case-topic">${c.topic}</span><span class="addr-case-date">${c.date}</span></div>
+  `).join('');
+  document.getElementById('address-detail').innerHTML = `
+    <div class="addr-detail-card">
+      <h3>${a.address}</h3>
+      <p class="addr-meta" style="margin-bottom:.8rem;">${a.complaints} complaint${a.complaints === 1 ? '' : 's'} in the last 6 months (sample data)</p>
+      ${caseRows}
+    </div>
+  `;
 }
 
 function stepHTML(cls, title, bodyHTML) {
