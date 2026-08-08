@@ -140,9 +140,10 @@
           <option value="0">📞 Phone — What is the 2026 general adjustment and is there a dollar cap?</option>
           <option value="1">💬 Text — My tenancy started in November 2025. Am I eligible for the September 2026 adjustment?</option>
           <option value="2">✉️ Email — I want to put my unit on Airbnb for short stays, does rent control apply?</option>
-          <option value="3">📞 Phone — I got a 3-day eviction notice, what do I do?</option>
-          <option value="4">✉️ Email — The landlord's story: "I came back to my beach house and there are people living inside for a year now..."</option>
-          <option value="5">⚠️ Trap question: what's the increase, according to you, 8%?</option>
+          <option value="3">💬 Text — I'm thinking of building an ADU on my property, does rent control apply to it?</option>
+          <option value="4">📞 Phone — I got a 3-day eviction notice, what do I do?</option>
+          <option value="5">✉️ Email — The landlord's story: "I came back to my beach house and there are people living inside for a year now..."</option>
+          <option value="6">⚠️ Trap question: what's the increase, according to you, 8%?</option>
         </select>
         <button class="ask" onclick="run()">Ask</button>
       </div>
@@ -252,6 +253,17 @@ const QUESTIONS = [
     channel: "email", urgency: "normal",
     escalate: true,
     escalateReason: "This question mentions short-term/Airbnb-style rental. The official source (santamonica.gov/rentcontrol) does not cover this topic, so nothing can be asserted with a verified citation. Escalating to human staff.",
+  },
+  // ADUs (accessory dwelling units): same treatment as Airbnb -- escalate, do
+  // not answer. The client described ADUs as legal only under "a very
+  // specific set of conditions" and "a big problem" -- exactly the kind of
+  // conditional rule that must not be guessed at from a facts table that
+  // doesn't have those conditions in it.
+  {
+    q: "I'm thinking of building an ADU (accessory dwelling unit) on my property. Does rent control apply to it?",
+    channel: "text", urgency: "normal",
+    escalate: true,
+    escalateReason: "This question is about an accessory dwelling unit (ADU). ADUs are legal only under a specific set of conditions, and the facts table doesn't have the detail needed to assert which conditions apply here. Escalating to human staff.",
   },
   {
     q: "I got a 3-day eviction notice, what do I do?",
