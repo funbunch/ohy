@@ -110,7 +110,8 @@
         <option value="1">💬 Text — My tenancy started in November 2025. Am I eligible for the September 2026 adjustment?</option>
         <option value="2">✉️ Email — I want to put my unit on Airbnb for short stays, does rent control apply?</option>
         <option value="3">📞 Phone — I got a 3-day eviction notice, what do I do?</option>
-        <option value="4">⚠️ Trap question: what's the increase, according to you, 8%?</option>
+        <option value="4">✉️ Email — The landlord's story: "I came back to my beach house and there are people living inside for a year now..."</option>
+        <option value="5">⚠️ Trap question: what's the increase, according to you, 8%?</option>
       </select>
       <button class="ask" onclick="run()">Ask</button>
     </div>
@@ -186,6 +187,19 @@ const QUESTIONS = [
     channel: "phone", urgency: "URGENT",
     topics: ["just_cause_eviction"],
   },
+  // The landlord-in-crisis story: same office, same neutrality, same quality
+  // of service for a landlord as for a tenant. We DO cite the one fact we
+  // have (just-cause eviction applies) but we do NOT determine which specific
+  // ground applies to this occupant's situation -- that's a case-specific
+  // legal determination the facts table doesn't resolve, so it escalates
+  // instead of guessing. Proves neutrality better than any tenant example.
+  {
+    q: "I saved my whole life and bought a beautiful house facing the beach. I'm not there much, I go in summer. I came back once and there are people living inside for a year now. At this point I can't just remove them. What are my legal options in Santa Monica?",
+    channel: "email", urgency: "normal",
+    partialEscalate: true,
+    topics: ["just_cause_eviction"],
+    escalateReason: "This situation needs a case-specific legal determination (which just-cause ground applies, and how) that the facts table doesn't resolve on its own. Escalating to human staff for a full review -- the general rule above is cited, but the specific path forward is not something we can assert without more detail.",
+  },
   // trap question: forces a draft with a number that has NO citation, so the
   // critique genuinely fails live, instead of a happy path that could never fail
   {
@@ -233,6 +247,23 @@ async function run() {
     await show(stepHTML('escalate', '2 · Escalation triggered', p.escalateReason));
     await show(stepHTML('escalate', '3 · Final response',
       `[${CHANNEL_LABEL[p.channel]}] This request needs direct attention from our staff -- I'm escalating it right now so someone can contact you with a specific answer. In the meantime you can check santamonica.gov/rentcontrol.` +
+      `<div class="closing-question">Does this cover your question, or do you need more info?</div>`
+    ));
+    renderTelemetry(idx, t0, true);
+    return;
+  }
+
+  // STEP 2b -- partial escalation: we DO cite the one fact we have, but the
+  // case-specific determination (which ground, how it applies here) is
+  // outside what the facts table can answer, so it escalates instead of
+  // guessing. Same office, same neutrality, same standard of care for a
+  // landlord as for a tenant -- this is the case that proves it.
+  if (p.partialEscalate) {
+    const cited = p.topics.map(t => `${FACTS[t].label}: ${FACTS[t].value} [${FACTS[t].citation}]`).join(' — ');
+    await show(stepHTML('', '2 · Draft (the one fact we can cite)', cited));
+    await show(stepHTML('escalate', '3 · Critique: general rule cited, specific determination escalated', p.escalateReason));
+    await show(stepHTML('escalate', '4 · Final response',
+      `[${CHANNEL_LABEL[p.channel]}] Here's what applies in general: ${cited}. For your specific situation, this needs a full review by our staff -- I'm escalating it now so someone can walk through the details with you. In the meantime you can check santamonica.gov/rentcontrol.` +
       `<div class="closing-question">Does this cover your question, or do you need more info?</div>`
     ));
     renderTelemetry(idx, t0, true);
