@@ -50,6 +50,11 @@ doesn't referee the disagreement. It illuminates it. And it replies on
 whatever channel the person reached out on — phone, text, or email — in
 their own language.
 
+The office put it better than we could: *"We're administering the
+conversation of truth. We don't take sides. It has to be opinion-free and
+fair."* That's the whole design principle, in one sentence, from the people
+who actually do this job.
+
 **[6. WHAT THIS MEANS FOR OVERSIGHT]**
 
 Every ticket generates telemetry: channel, urgency, time to resolution,
@@ -66,6 +71,57 @@ multi-tenant, cloud-native app on purpose — not something installed
 one-office-at-a-time. Fix a bug once, every city gets the fix. No
 per-customer customization to maintain. That's what makes this a platform,
 not a one-off tool for one office.
+
+And it's white-label by architecture, not just by policy. The office itself
+pointed this out watching the demo: the base design should be neutral, and
+each city applies its own CSS on top. That's exactly how this is built — a
+city-skin layer sits over a shared engine, with a reserved space for the
+city's own seal and branding. Santa Monica's look is not baked into the
+logic. Swap the skin, keep the motor. That's the difference between a demo
+and a platform.
+
+**[8. THE PATH TO REAL DATA — MCP]**
+
+Today, the fact table lives in the repo and updates by hand, on purpose —
+that's a deliberate control, not a shortcut. The path to production is MCP:
+it's exactly the protocol for connecting this engine to the city's live
+sources — the MAR registry, Board resolutions — without changing the engine
+itself. What you're seeing today is the verification mechanism; MCP is how
+it plugs into real, live data next.
+
+**[9. HOW THIS SPREADS]**
+
+Here's the part that matters for how this actually grows: the output of using
+this system IS the marketing. Every ticket it resolves produces evidence that
+the office is doing its job — which is literally what the office asked for:
+being able to show their supervisor the work is getting done. That evidence
+is publishable. Ericka can put out "we handled this many requests, here's how
+long they took, here are the ten topics people ask about that we haven't
+documented yet" — another city's council member sees that and asks their own
+staff "why don't we have this?" Nobody had to sell them anything.
+
+And the failure log itself is the press hook. "Here's what residents don't
+understand about their rights" is a real story, it's the same kind of data in
+any city, and a tenant advocacy group amplifies it for free. It's a public
+good, not an error log.
+
+Three distribution properties we already have, two of them by accident: it's
+a single HTML file that needs no install and no network — a city employee can
+open it without asking IT for permission (we built that out of fear of the
+event wifi; it turned out to be our strongest distribution property). The
+underlying prompt itself can be copy-pasted into Claude and used in thirty
+seconds with nothing deployed. And neutrality means it's adoptable without
+political cost — most civic tech reads as politically coded, but this serves
+tenants and landlords alike, so an elected official can adopt it without
+paying a price with either base.
+
+The honest limit, and naming it makes this more credible, not less: every
+city needs someone to build and maintain *their* fact table. That's not a
+code problem, it's the real unit of work, and it's the actual ceiling on how
+fast this scales. But it self-prioritizes — the failure log tells you exactly
+what to add next, ordered by real demand, not a guess. The engine is the same
+for every city. What changes is the fact table, and the system itself tells
+you in what order to fill it in.
 
 **[CLOSE]**
 

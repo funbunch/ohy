@@ -227,7 +227,10 @@ def _detect_topics(question: str) -> list:
         topics.append("coverage")
     if any(k in q for k in ["desalojo", "eviction", "causa justa", "just cause"]):
         topics.append("just_cause_eviction")
-    return topics or list(FACTS.keys())  # no clear match: show everything, don't invent
+    return topics
+    # No fallback to "show everything" here anymore: an empty list on no
+    # match is what lets critique() correctly classify this as a retrieval
+    # failure (family a) instead of silently answering with unrelated facts.
 
 
 # De-escalating opener by language and urgency. Nobody calls happy -- everyone
@@ -338,6 +341,13 @@ class DuckResponse:
     escalate_to_human: bool = False
     escalation_reason: Optional[str] = None
     closing: str = ""
+    fail_family: Optional[str] = None
+    """'retrieval' (a): topic is in the fact table, question didn't match --
+    solvable within the conversation, so we ask to rephrase and list covered
+    topics. 'coverage' (b): topic is genuinely not documented (Airbnb, ADU)
+    or the critic caught an invented claim -- no rephrase fixes this, escalate
+    directly. See FAIL_COPY.md for why treating these the same hides which of
+    the two problems the office actually needs to fix."""
 
 
 def draft(question: str, channel: Channel) -> DuckResponse:
