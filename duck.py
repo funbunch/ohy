@@ -283,9 +283,10 @@ def draft(question: str, channel: Channel) -> DuckResponse:
     lines = []
     for t in topics:
         f = FACTS[t]
-        lines.append(f"{t.replace('_', ' ')}: {f['value']} [{f['citation']}]")
-        if t in TWO_PARTY_FRAMING:
-            r.framing[t] = TWO_PARTY_FRAMING[t]
+        label = FACT_LABELS[language][t]
+        lines.append(f"{label}: {f['value']} [{f['citation']}]")
+        if t in TWO_PARTY_FRAMING[language]:
+            r.framing[t] = TWO_PARTY_FRAMING[language][t]
     r.draft_text = _DEESCALATION[language][urgency if urgency == "URGENT" else "normal"] + " ".join(lines)
     return r
 

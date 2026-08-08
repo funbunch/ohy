@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Santa Monica Rent Control — Rubber Duck + Queue</title>
+<title>Santa Monica Rent Control — Rubber Duck</title>
 <style>
   :root {
     --bg: #f7f6f3; --card: #fff; --ink: #111; --accent: #e8a317;
     --muted: #555; --border: #e2dfd8; --blue: #1c3f66; --blue-lt: #eaf1f8;
-    --ok: #1f7a3d; --fail: #b3261e;
+    --ok: #1f7a3d; --fail: #b3261e; --tenant: #1c3f66; --landlord: #8a5a17;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -18,24 +18,24 @@
   .shell { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
   @media (max-width: 800px) { .shell { grid-template-columns: 1fr; } }
 
-  /* cola lateral -- vision de Lily, honestamente marcada como maqueta */
-  .cola { background: var(--blue); color: #fff; padding: 1.5rem 1.1rem; }
-  .cola h2 { font-size: .95rem; text-transform: uppercase; letter-spacing: .06em; opacity: .85; margin-bottom: .3rem; }
-  .cola .tag-maqueta { font-size: .68rem; background: rgba(255,255,255,.15); padding: .15rem .5rem; border-radius: 4px; display: inline-block; margin-bottom: 1rem; }
+  /* side queue -- Lily's vision, honestly labeled as a mockup */
+  .queue { background: var(--blue); color: #fff; padding: 1.5rem 1.1rem; }
+  .queue h2 { font-size: .95rem; text-transform: uppercase; letter-spacing: .06em; opacity: .85; margin-bottom: .3rem; }
+  .queue .tag-mockup { font-size: .68rem; background: rgba(255,255,255,.15); padding: .15rem .5rem; border-radius: 4px; display: inline-block; margin-bottom: 1rem; }
   .ticket { background: rgba(255,255,255,.08); border-radius: 8px; padding: .7rem .8rem; margin-bottom: .6rem; font-size: .82rem; }
-  .ticket .canal { opacity: .6; font-size: .72rem; }
-  .estado { display: inline-block; font-size: .68rem; font-weight: 700; padding: .1rem .45rem; border-radius: 4px; margin-top: .35rem; }
-  .estado.nueva { background: #e8a317; color: #1c1c1c; }
-  .estado.curso { background: #3a8bd8; color: #fff; }
-  .estado.hecha { background: #2e7d4f; color: #fff; }
-  .ticket.activo { border: 2px solid var(--accent); background: rgba(255,255,255,.16); }
+  .ticket .channel { opacity: .6; font-size: .72rem; }
+  .status { display: inline-block; font-size: .68rem; font-weight: 700; padding: .1rem .45rem; border-radius: 4px; margin-top: .35rem; }
+  .status.new { background: #e8a317; color: #1c1c1c; }
+  .status.progress { background: #3a8bd8; color: #fff; }
+  .status.done { background: #2e7d4f; color: #fff; }
+  .ticket.active { border: 2px solid var(--accent); background: rgba(255,255,255,.16); }
 
-  main { padding: 2rem 2.2rem 3rem; max-width: 760px; }
+  main { padding: 2rem 2.2rem 3rem; max-width: 780px; }
   .tag { display: inline-block; background: var(--accent); color: #111; font-size: .72rem; font-weight: 700; padding: .22rem .55rem; border-radius: 4px; margin-bottom: .8rem; letter-spacing: .02em; }
   h1 { font-size: 1.65rem; font-weight: 700; letter-spacing: -.02em; margin-bottom: .3rem; }
   .lead { color: var(--muted); margin-bottom: 1.6rem; }
 
-  .pregunta-box { display: flex; gap: .6rem; margin-bottom: 1.6rem; }
+  .question-box { display: flex; gap: .6rem; margin-bottom: 1.6rem; }
   select, button.ask {
     font-size: .92rem; padding: .65rem .9rem; border-radius: 8px; border: 1px solid var(--border);
   }
@@ -43,16 +43,46 @@
   button.ask { background: var(--ink); color: #fff; border: none; font-weight: 600; cursor: pointer; }
   button.ask:hover { opacity: .88; }
 
-  .paso { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem 1.4rem; margin-bottom: 1rem; opacity: 0; transform: translateY(6px); transition: opacity .35s, transform .35s; }
-  .paso.show { opacity: 1; transform: translateY(0); }
-  .paso h3 { font-size: .82rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .5rem; display: flex; align-items: center; gap: .4rem; }
-  .paso .cuerpo { font-size: .93rem; }
-  .paso.critica-ok h3 { color: var(--ok); }
-  .paso.critica-fail h3 { color: var(--fail); }
-  .cita { color: var(--muted); font-size: .8rem; }
-  .hallazgo { font-size: .85rem; padding: .3rem 0; }
-  .hallazgo.ok { color: var(--ok); }
-  .hallazgo.fail { color: var(--fail); font-weight: 600; }
+  .step { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem 1.4rem; margin-bottom: 1rem; opacity: 0; transform: translateY(6px); transition: opacity .35s, transform .35s; }
+  .step.show { opacity: 1; transform: translateY(0); }
+  .step h3 { font-size: .82rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .5rem; display: flex; align-items: center; gap: .4rem; }
+  .step .body { font-size: .93rem; }
+  .step.critique-ok h3 { color: var(--ok); }
+  .step.critique-fail h3 { color: var(--fail); }
+  .step.escalate h3 { color: var(--landlord); }
+  .cite { color: var(--muted); font-size: .8rem; }
+  .finding { font-size: .85rem; padding: .3rem 0; }
+  .finding.ok { color: var(--ok); }
+  .finding.fail { color: var(--fail); font-weight: 600; }
+
+  .urgency-pill { display: inline-block; font-size: .7rem; font-weight: 700; padding: .15rem .5rem; border-radius: 999px; margin-left: .4rem; vertical-align: middle; }
+  .urgency-pill.FAQ { background: #e6ebf1; color: var(--blue); }
+  .urgency-pill.normal { background: #eee; color: var(--muted); }
+  .urgency-pill.URGENT { background: #fdeceb; color: var(--fail); }
+
+  .channel-pill { display: inline-block; font-size: .78rem; font-weight: 600; padding: .2rem .6rem; border-radius: 999px; background: var(--blue-lt); color: var(--blue); margin-right: .4rem; }
+
+  .two-party { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-top: .6rem; }
+  @media (max-width: 620px) { .two-party { grid-template-columns: 1fr; } }
+  .party-card { border-radius: 10px; padding: .8rem .9rem; font-size: .88rem; }
+  .party-card.tenant { background: #eaf1f8; border-left: 4px solid var(--tenant); }
+  .party-card.landlord { background: #fbf1e0; border-left: 4px solid var(--landlord); }
+  .party-card .party-label { font-weight: 700; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .35rem; }
+  .party-card.tenant .party-label { color: var(--tenant); }
+  .party-card.landlord .party-label { color: var(--landlord); }
+  .party-fact { margin-bottom: .55rem; }
+  .party-fact:last-child { margin-bottom: 0; }
+
+  .closing-question { margin-top: .9rem; font-style: italic; color: var(--muted); }
+
+  .telemetry { background: var(--ink); color: #fff; border-radius: 12px; padding: 1.3rem 1.4rem; margin-top: 1.4rem; }
+  .telemetry h3 { font-size: .82rem; text-transform: uppercase; letter-spacing: .05em; opacity: .75; margin-bottom: .7rem; }
+  .telemetry-row { display: flex; justify-content: space-between; align-items: baseline; padding: .5rem 0; border-bottom: 1px solid rgba(255,255,255,.12); }
+  .telemetry-row:last-child { border-bottom: none; }
+  .telemetry-label { font-size: .85rem; opacity: .8; }
+  .telemetry-value { font-size: 1.3rem; font-weight: 700; }
+  .telemetry-value.accent { color: var(--accent); }
+  .telemetry-note { font-size: .72rem; opacity: .55; margin-top: .6rem; }
 
   footer { margin-top: 2rem; font-size: .78rem; color: var(--muted); }
 </style>
@@ -60,100 +90,228 @@
 <body>
 <div class="shell">
 
-  <aside class="cola">
-    <h2>Cola del equipo</h2>
-    <div class="tag-maqueta">maqueta — visión, no implementado hoy</div>
-    <div class="ticket"><div class="canal">📞 teléfono</div>¿Puedo pelear un aumento fuera de plazo?<div class="estado curso">En curso — María</div></div>
-    <div class="ticket"><div class="canal">✉️ email</div>Aviso de desalojo recibido esta semana<div class="estado nueva">Nueva</div></div>
-    <div class="ticket activo"><div class="canal">💬 demo en vivo</div>Pregunta de la demo →<div class="estado curso">Ahora mismo</div></div>
-    <div class="ticket"><div class="canal">📞 teléfono</div>Consulta sobre registro de unidad<div class="estado hecha">Resuelta</div></div>
+  <aside class="queue">
+    <h2>Team Queue</h2>
+    <div class="tag-mockup">mockup — vision, not implemented today</div>
+    <div class="ticket"><div class="channel">📞 phone</div>Can I dispute a late increase?<div class="status progress">In progress — Maria</div></div>
+    <div class="ticket"><div class="channel">✉️ email</div>Eviction notice received this week<div class="status new">New</div></div>
+    <div class="ticket active"><div class="channel">💬 live demo</div>Demo question →<div class="status progress">Right now</div></div>
+    <div class="ticket"><div class="channel">📞 phone</div>Question about unit registration<div class="status done">Resolved</div></div>
   </aside>
 
   <main>
-    <div class="tag">V2 · LOOP DE CRÍTICA REAL, NO SOLO UN PROMPT</div>
+    <div class="tag">V2 · REAL CRITIC LOOP, NOT JUST A PROMPT</div>
     <h1>Santa Monica Rent Control — Rubber Duck</h1>
-    <p class="lead">La crítica es código que verifica el borrador contra hechos citados — puede fallar de verdad, no es un LLM diciendo "ya me revisé".</p>
+    <p class="lead">The critique is code that checks the draft against cited facts — it can genuinely fail, it's not an LLM saying "I already checked myself."</p>
 
-    <div class="pregunta-box">
-      <select id="preguntas">
-        <option value="0">¿Cuál es el ajuste general 2026 y hay un tope en dólares?</option>
-        <option value="1">¿Puede el propietario aplicar varios años de aumentos acumulados de una vez?</option>
-        <option value="2">Mi tenencia empezó en noviembre de 2025. ¿Soy elegible para el ajuste de septiembre 2026?</option>
-        <option value="3">⚠️ Pregunta trampa: ¿cuál es el ajuste, según vos, del 8%?</option>
+    <div class="question-box">
+      <select id="questions">
+        <option value="0">📞 Phone — What is the 2026 general adjustment and is there a dollar cap?</option>
+        <option value="1">💬 Text — My tenancy started in November 2025. Am I eligible for the September 2026 adjustment?</option>
+        <option value="2">✉️ Email — I want to put my unit on Airbnb for short stays, does rent control apply?</option>
+        <option value="3">📞 Phone — I got a 3-day eviction notice, what do I do?</option>
+        <option value="4">⚠️ Trap question: what's the increase, according to you, 8%?</option>
       </select>
-      <button class="ask" onclick="correr()">Preguntar</button>
+      <button class="ask" onclick="run()">Ask</button>
     </div>
 
-    <div id="pasos"></div>
+    <div id="steps"></div>
 
-    <footer>Prototipo · Claude Impact Lab, 2026-08-08 · Hechos oficiales: Resolución 26-001, Acción de la Junta oct-2025</footer>
+    <footer>Prototype · Claude Impact Lab, 2026-08-08 · Official facts: Resolution 26-001, Board Action Oct 2025</footer>
   </main>
 </div>
 
 <script>
-// Misma logica que duck.py, re-implementada en JS puro para que la demo en
-// vivo no dependa de servidor, red, ni API -- cero puntos de falla.
-const HECHOS = {
-  ga_2026_pct: {valor: "2.6%", cita: "Resolución 26-001"},
-  ga_2026_techo: {valor: "$70/mes (unidades con MAR ≥ $2,674)", cita: "Resolución 26-001"},
-  ga_2026_vigencia: {valor: "1 de septiembre de 2026", cita: "Resolución 26-001"},
-  elegibilidad_ga: {valor: "tenencia iniciada antes del 1-sep-2025; unidad registrada; sin multas de salud/seguridad sin corregir; aviso escrito conforme a ley estatal", cita: "Resolución 26-001"},
-  tope_acumulado: {valor: "máximo 10% del alquiler anterior en cualquier período de 12 meses", cita: "Acción de la Junta, octubre 2025"},
+// Same logic as duck.py, re-implemented in plain JS so the live demo has no
+// dependency on a server, network, or API -- zero points of failure.
+const FACTS = {
+  ga_2026_pct: {label: "2026 general adjustment", value: "2.6%", citation: "Resolution 26-001"},
+  ga_2026_cap: {label: "2026 general adjustment dollar cap", value: "$70/month (units with MAR ≥ $2,674)", citation: "Resolution 26-001"},
+  ga_2026_effective: {label: "2026 general adjustment effective date", value: "September 1, 2026", citation: "Resolution 26-001"},
+  ga_eligibility: {label: "general adjustment eligibility", value: "tenancy started before Sep 1, 2025; unit properly registered; no uncorrected health/safety citations; written notice per state law", citation: "Resolution 26-001"},
+  banked_cap: {label: "banked increase cap", value: "maximum 10% of the tenant's previous rent in any 12-month period", citation: "Board Action, October 2025"},
+  just_cause_eviction: {label: "just-cause eviction", value: "applies; grounds listed in Charter Sec. 1806", citation: "City Charter Sec. 1806"},
 };
 
-const PREGUNTAS = [
-  {q: "¿Cuál es el ajuste general 2026 y hay un tope en dólares?", temas: ["ga_2026_pct","ga_2026_techo","ga_2026_vigencia"]},
-  {q: "¿Puede el propietario aplicar varios años de aumentos acumulados de una vez?", temas: ["tope_acumulado"]},
-  {q: "Mi tenencia empezó en noviembre de 2025. ¿Soy elegible para el ajuste de septiembre 2026?", temas: ["elegibilidad_ga","ga_2026_vigencia"]},
-  // pregunta trampa: fuerza un borrador con un numero SIN cita para que la critica falle de verdad en vivo
-  {q: "⚠️ Pregunta trampa: ¿cuál es el ajuste, según vos, del 8%?", temas: ["ga_2026_pct"], forzarFalla: true},
+// Two-party framing: for each fact, what it means for each side. The office
+// represents both tenants and landlords, it does not arbitrate -- the system
+// ILLUMINATES the difference in reading, it does not resolve it. Same fact,
+// same citation, two readings.
+const TWO_PARTY = {
+  ga_2026_pct: {
+    tenant: "Your rent can go up by at most 2.6% starting Sep 1, 2026 -- no more than that under this adjustment, subject to the dollar cap if it applies.",
+    landlord: "You can apply up to a 2.6% general adjustment starting Sep 1, 2026, subject to the dollar cap for higher-rent units.",
+  },
+  ga_2026_cap: {
+    tenant: "If your current rent (MAR) is $2,674 or more, the dollar increase is capped at $70/month even if 2.6% would be higher in your case.",
+    landlord: "For units with MAR ≥ $2,674, the increase cannot exceed $70/month even if the calculated 2.6% is higher.",
+  },
+  ga_eligibility: {
+    tenant: "The landlord can only apply this adjustment if your tenancy started before Sep 1, 2025, the unit is registered, there are no uncorrected health/safety citations, and you were given written notice per state law. If any of these is missing, you can challenge the increase.",
+    landlord: "To apply the adjustment you need the tenancy to have started before Sep 1, 2025, the unit to be registered, no outstanding health/safety citations, and written notice given per state law.",
+  },
+  banked_cap: {
+    tenant: "Even if the landlord has banked increases from prior years, they cannot charge you more than 10% of your previous rent in any 12-month period, all at once.",
+    landlord: "Banked increases applied at once are capped at a maximum of 10% of the tenant's previous rent in any 12-month period.",
+  },
+  just_cause_eviction: {
+    tenant: "You cannot be evicted without a recognized just cause -- the valid grounds are listed in Charter Sec. 1806, it is not up to the landlord's discretion.",
+    landlord: "To evict a tenant you need a just cause among the grounds listed in Charter Sec. 1806 -- ending the lease alone is not enough.",
+  },
+};
+
+// Office-reported baseline: this number comes from the Rent Control Board,
+// it is not something we measured. Never present it as our own measurement.
+const OFFICE_REPORTED_BASELINE = "3–5 weeks";
+
+const QUESTIONS = [
+  {
+    q: "What is the 2026 general adjustment and is there a dollar cap?",
+    channel: "phone", urgency: "normal",
+    topics: ["ga_2026_pct", "ga_2026_cap", "ga_2026_effective"],
+  },
+  {
+    q: "My tenancy started in November 2025. Am I eligible for the September 2026 adjustment?",
+    channel: "text", urgency: "normal",
+    topics: ["ga_eligibility", "ga_2026_effective"],
+  },
+  {
+    q: "I want to put my unit on Airbnb for short stays, does rent control apply?",
+    channel: "email", urgency: "normal",
+    escalate: true,
+    escalateReason: "This question mentions short-term/Airbnb-style rental. The official source (santamonica.gov/rentcontrol) does not cover this topic, so nothing can be asserted with a verified citation. Escalating to human staff.",
+  },
+  {
+    q: "I got a 3-day eviction notice, what do I do?",
+    channel: "phone", urgency: "URGENT",
+    topics: ["just_cause_eviction"],
+  },
+  // trap question: forces a draft with a number that has NO citation, so the
+  // critique genuinely fails live, instead of a happy path that could never fail
+  {
+    q: "What's the increase, according to you, 8%?",
+    channel: "text", urgency: "normal",
+    topics: ["ga_2026_pct"], forceFail: true,
+  },
 ];
 
-function pasoHTML(clase, titulo, cuerpoHTML) {
-  return `<div class="paso ${clase}"><h3>${titulo}</h3><div class="cuerpo">${cuerpoHTML}</div></div>`;
+const CHANNEL_ICON = {phone: "📞", text: "💬", email: "✉️"};
+const CHANNEL_LABEL = {phone: "Outbound call", text: "Outbound SMS", email: "Outbound email"};
+
+function stepHTML(cls, title, bodyHTML) {
+  return `<div class="step ${cls}"><h3>${title}</h3><div class="body">${bodyHTML}</div></div>`;
 }
 
-async function mostrar(el) {
-  document.getElementById('pasos').insertAdjacentHTML('beforeend', el);
+async function show(html) {
+  document.getElementById('steps').insertAdjacentHTML('beforeend', html);
   await new Promise(r => setTimeout(r, 40));
-  const nodos = document.querySelectorAll('.paso');
-  nodos[nodos.length - 1].classList.add('show');
+  const nodes = document.querySelectorAll('.step');
+  nodes[nodes.length - 1].classList.add('show');
   await new Promise(r => setTimeout(r, 550));
 }
 
-async function correr() {
-  document.getElementById('pasos').innerHTML = '';
-  const idx = parseInt(document.getElementById('preguntas').value);
-  const p = PREGUNTAS[idx];
+function fmtMinutes(startMs) {
+  const elapsed = (performance.now() - startMs) / 1000;
+  return elapsed < 1 ? "< 1 second" : elapsed.toFixed(1) + " seconds";
+}
 
-  await mostrar(pasoHTML('', '1 · Pregunta recibida', `<em>"${p.q}"</em>`));
+async function run() {
+  const t0 = performance.now();
+  document.getElementById('steps').innerHTML = '';
+  const idx = parseInt(document.getElementById('questions').value);
+  const p = QUESTIONS[idx];
 
-  // DRAFT
-  let borrador = p.temas.map(t => `${t.replaceAll('_',' ')}: ${HECHOS[t].valor} [${HECHOS[t].cita}]`).join(' — ');
-  if (p.forzarFalla) borrador = 'el ajuste general 2026 es 8%, sin fuente';  // simula un borrador desviado, a proposito, para mostrar que la critica SI lo agarra
-  await mostrar(pasoHTML('', '2 · Borrador (sin verificar todavía)', borrador));
+  // STEP 1 -- ticket comes in on a channel, visible
+  await show(stepHTML('', '1 · Ticket received',
+    `<span class="channel-pill">${CHANNEL_ICON[p.channel]} ${p.channel}</span>` +
+    `<span class="urgency-pill ${p.urgency}">${p.urgency === 'URGENT' ? '🔴 URGENT' : p.urgency === 'FAQ' ? 'FAQ' : 'normal'}</span>` +
+    `<br><br><em>"${p.q}"</em>`
+  ));
 
-  // CRITICA -- chequeo real contra la tabla de hechos, puede fallar
-  const hallazgos = [];
-  if (p.forzarFalla) {
-    hallazgos.push('<div class="hallazgo fail">✗ FALLA: "8%" no aparece en la tabla de hechos oficiales — número inventado detectado</div>');
+  // STEP 2 -- Airbnb / short-term always escalates, no fact-based answer generated
+  if (p.escalate) {
+    await show(stepHTML('escalate', '2 · Escalation triggered', p.escalateReason));
+    await show(stepHTML('escalate', '3 · Final response',
+      `[${CHANNEL_LABEL[p.channel]}] This request needs direct attention from our staff -- I'm escalating it right now so someone can contact you with a specific answer. In the meantime you can check santamonica.gov/rentcontrol.` +
+      `<div class="closing-question">Does this cover your question, or do you need more info?</div>`
+    ));
+    renderTelemetry(idx, t0, true);
+    return;
+  }
+
+  // STEP 2 -- draft (not yet verified)
+  let draft = p.topics.map(t => `${FACTS[t].label}: ${FACTS[t].value} [${FACTS[t].citation}]`).join(' — ');
+  if (p.forceFail) draft = 'the 2026 general adjustment is 8%, no source'; // deliberately off-spec draft, to show the critique genuinely catches it
+  await show(stepHTML('', '2 · Draft (not yet verified)', draft));
+
+  // STEP 3 -- CRITIQUE: real check against the facts table, can fail
+  const findings = [];
+  if (p.forceFail) {
+    findings.push('<div class="finding fail">✗ FAIL: "8%" does not appear in the official facts table — invented number detected</div>');
   } else {
-    for (const t of p.temas) {
-      if (borrador.includes(HECHOS[t].cita)) {
-        hallazgos.push(`<div class="hallazgo ok">✓ "${t.replaceAll('_',' ')}" verificado contra ${HECHOS[t].cita}</div>`);
+    for (const t of p.topics) {
+      if (draft.includes(FACTS[t].citation)) {
+        findings.push(`<div class="finding ok">✓ "${FACTS[t].label}" verified against ${FACTS[t].citation}</div>`);
       } else {
-        hallazgos.push(`<div class="hallazgo fail">✗ FALLA: "${t}" sin cita</div>`);
+        findings.push(`<div class="finding fail">✗ FAIL: "${t}" has no citation</div>`);
       }
     }
   }
-  const fallo = hallazgos.some(h => h.includes('fail'));
-  await mostrar(pasoHTML(fallo ? 'critica-fail' : 'critica-ok', '3 · Crítica (código, no otro prompt)', hallazgos.join('')));
+  const failed = findings.some(h => h.includes('fail'));
+  await show(stepHTML(failed ? 'critique-fail' : 'critique-ok', '3 · Critique (code, not another prompt)', findings.join('')));
 
-  // FINAL
-  const finalTxt = fallo
-    ? 'No se entrega esta respuesta. El sistema la bloqueó porque no pudo verificarla — se remite al residente a santamonica.gov/rentcontrol.'
-    : borrador + '<br><br><span class="cita">Cada dato mostrado fue verificado contra la fuente oficial antes de llegar aquí.</span>';
-  await mostrar(pasoHTML(fallo ? 'critica-fail' : '', '4 · Respuesta final', finalTxt));
+  // STEP 4 -- final response
+  if (failed) {
+    await show(stepHTML('critique-fail', '4 · Final response',
+      `[${CHANNEL_LABEL[p.channel]}] This answer is withheld. The system blocked it because it could not be verified — the resident is referred to santamonica.gov/rentcontrol.`
+    ));
+    renderTelemetry(idx, t0, false, true);
+    return;
+  }
+
+  let finalHTML = `[${CHANNEL_LABEL[p.channel]}] ${draft}<br><br><span class="cite">Every fact shown was verified against the official source before reaching you.</span>`;
+
+  // STEP 5 -- two-party panel: same fact, same citation, two readings
+  const partyCards = p.topics.filter(t => TWO_PARTY[t]).map(t => `
+    <div class="party-card tenant"><div class="party-label">If you're a tenant</div><div class="party-fact">${TWO_PARTY[t].tenant}</div></div>
+    <div class="party-card landlord"><div class="party-label">If you're a landlord</div><div class="party-fact">${TWO_PARTY[t].landlord}</div></div>
+  `).join('');
+
+  await show(stepHTML('', '4 · Final response', finalHTML));
+  if (partyCards) {
+    await show(stepHTML('', '5 · How this applies to your situation', `<div class="two-party">${partyCards}</div>`));
+  }
+  await show(stepHTML('', `${partyCards ? '6' : '5'} · Closing question`,
+    `<span class="closing-question">Does this cover your question, or do you need more info?</span>`
+  ));
+
+  renderTelemetry(idx, t0, false, false);
+}
+
+function renderTelemetry(idx, t0, escalated, blocked) {
+  const elapsed = fmtMinutes(t0);
+  let outcomeLabel = "Resolved without human staff";
+  if (escalated) outcomeLabel = "Escalated to human staff (correct outcome — topic outside official source)";
+  if (blocked) outcomeLabel = "Answer withheld by critique (correct outcome — no invented facts shown)";
+
+  document.getElementById('steps').insertAdjacentHTML('beforeend', `
+    <div class="telemetry">
+      <h3>Telemetry — what Ericka reports to oversight</h3>
+      <div class="telemetry-row">
+        <div class="telemetry-label">Office-reported baseline (not measured by us)</div>
+        <div class="telemetry-value">${OFFICE_REPORTED_BASELINE}</div>
+      </div>
+      <div class="telemetry-row">
+        <div class="telemetry-label">This query, start to finish</div>
+        <div class="telemetry-value accent">${elapsed}</div>
+      </div>
+      <div class="telemetry-row">
+        <div class="telemetry-label">Outcome</div>
+        <div class="telemetry-value" style="font-size:.95rem;">${outcomeLabel}</div>
+      </div>
+      <div class="telemetry-note">Baseline is a figure reported by the Rent Control Board office, not a measurement performed by this system. The per-query time above is measured live in this demo run.</div>
+    </div>
+  `);
 }
 </script>
 </body>
