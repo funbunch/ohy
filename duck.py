@@ -300,14 +300,17 @@ def draft(question: str, channel: Channel) -> DuckResponse:
     urgency = _detect_urgency(question)
     r = DuckResponse(question=question, channel=channel, language=language, urgency=urgency)
 
-    # Airbnb / short-term: do NOT answer with facts -- the official source
-    # doesn't mention it, any claim would be invented. Always escalate.
-    if _detect_airbnb(question):
+    # Airbnb/short-term or ADU: do NOT answer with facts -- either the
+    # official source doesn't mention it (short-term), or it's a genuinely
+    # conditional rule the facts table can't safely simplify (ADUs are legal
+    # only under a specific set of conditions). Always escalate.
+    if _detect_escalate_topic(question):
         r.escalate_to_human = True
         r.escalation_reason = (
-            "Question mentions short-term/Airbnb-style rental. The official source "
-            "(santamonica.gov/rentcontrol) does not cover this topic, so nothing can "
-            "be asserted with a verified citation. Escalating to human staff."
+            "Question mentions short-term/Airbnb-style rental or an accessory dwelling "
+            "unit (ADU). These topics are either not covered by the official source, or "
+            "depend on a specific set of conditions the facts table can't safely assert "
+            "without more detail. Escalating to human staff."
         )
         r.facts_used = []
         r.draft_text = ""
