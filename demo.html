@@ -222,9 +222,11 @@
         <button class="ask" onclick="run()">Ask</button>
       </div>
 
+      <p class="cite" style="margin-top:-1.2rem; margin-bottom:1.8rem; max-width:72ch;">Channel intake is designed for phone, SMS and email, but is not wired to live channels in this demo. The channel shown on each ticket and reply is the intended routing, not a real send.</p>
+
       <div id="steps"></div>
 
-      <footer>Prototype · Claude Impact Lab, 2026-08-08 · Official facts: Resolution 26-001, Board Action Oct 2025</footer>
+      <footer>Prototype · Claude Impact Lab, 2026-08-08 · Official facts: Resolution 26-001, Board Action Oct 2025, City Charter Sec. 1806</footer>
     </div>
 
     <div id="tab-supervisor" style="display:none;">
@@ -425,7 +427,11 @@ const QUESTIONS = [
 ];
 
 const CHANNEL_ICON = {phone: "📞", text: "💬", email: "✉️"};
-const CHANNEL_LABEL = {phone: "Outbound call", text: "Outbound SMS", email: "Outbound email"};
+// "(simulated)" is not hedging -- intake and reply are designed for phone, SMS
+// and email but are not wired to any real channel today. These labels sit
+// inside the region tagged REAL CRITIC LOOP, so without the qualifier they read
+// as a live send.
+const CHANNEL_LABEL = {phone: "Outbound call (simulated)", text: "Outbound SMS (simulated)", email: "Outbound email (simulated)"};
 
 // Guided walkthrough: a fixed sequence through the most illustrative cases,
 // so someone with no presenter can follow it and understand what to look at
@@ -464,7 +470,10 @@ function exitWalkthrough(finished) {
   document.getElementById('intro-block').style.display = 'block';
   if (finished) {
     // A stranger reading only on-screen text needs an explicit end state --
-    // silently returning to the intro doesn't say "you're done."
+    // silently returning to the intro doesn't say "you're done." The last walk
+    // step sits on the supervisor tab, so return to the demo tab first:
+    // otherwise the caption points at a dropdown that isn't on screen.
+    switchTab('demo');
     document.getElementById('walk-caption').textContent = "That's the walkthrough. Use the tabs above and the dropdown below to explore any case on your own.";
     document.getElementById('walk-caption').style.display = 'block';
   } else {
@@ -602,7 +611,15 @@ function fmtMinutes(startMs) {
   return elapsed < 1 ? "< 1 second" : elapsed.toFixed(1) + " seconds";
 }
 
+// One run at a time. Each step holds ~590ms inside show(), and every entry
+// point (Ask, the walkthrough Next button, the dropdown) calls run(). Without
+// this guard a second run clears #steps while the first is still awaiting, and
+// the two interleave on screen mid-presentation.
+let running = false;
+
 async function run() {
+  if (running) return;
+  running = true;
   const t0 = performance.now();
   document.getElementById('steps').innerHTML = '';
   const idx = parseInt(document.getElementById('questions').value);
@@ -623,6 +640,7 @@ async function run() {
       `<div class="closing-question">Does this cover your question, or do you need more info?</div>`
     ));
     renderTelemetry(idx, t0, true);
+    running = false;
     return;
   }
 
@@ -640,6 +658,7 @@ async function run() {
       `<div class="closing-question">Does this cover your question, or do you need more info?</div>`
     ));
     renderTelemetry(idx, t0, false, false, true);
+    running = false;
     return;
   }
 
@@ -648,17 +667,24 @@ async function run() {
   if (p.forceFail) draft = 'the 2026 general adjustment is 8%, no source'; // deliberately off-spec draft, to show the critique genuinely catches it
   await show(stepHTML('', '2 · Draft (not yet verified)', draft));
 
-  // STEP 3 -- CRITIQUE: real check against the facts table, can fail
+  // STEP 3 -- CRITIQUE: real check against the facts table, can fail.
+  // Nothing here knows which question was asked or which one is "the trap".
+  // It reads the draft it was handed, so it can fail on any input: every
+  // numeric claim must appear in the facts table, and every topic must carry
+  // its citation. No special case, no pre-written verdict.
+  const NUM = /\d+(?:\.\d+)?%|\$[\d,]+/g;
+  const KNOWN_NUMBERS = new Set(Object.values(FACTS).flatMap(f => f.value.match(NUM) || []));
   const findings = [];
-  if (p.forceFail) {
-    findings.push('<div class="finding fail">✗ FAIL: "8%" does not appear in the official facts table — invented number detected</div>');
-  } else {
-    for (const t of p.topics) {
-      if (draft.includes(FACTS[t].citation)) {
-        findings.push(`<div class="finding ok">✓ "${FACTS[t].label}" verified against ${FACTS[t].citation}</div>`);
-      } else {
-        findings.push(`<div class="finding fail">✗ FAIL: "${t}" has no citation</div>`);
-      }
+  for (const num of draft.match(NUM) || []) {
+    if (!KNOWN_NUMBERS.has(num)) {
+      findings.push(`<div class="finding fail">✗ FAIL: "${num}" does not appear in the official facts table — invented number detected</div>`);
+    }
+  }
+  for (const t of p.topics) {
+    if (draft.includes(FACTS[t].citation)) {
+      findings.push(`<div class="finding ok">✓ "${FACTS[t].label}" verified against ${FACTS[t].citation}</div>`);
+    } else {
+      findings.push(`<div class="finding fail">✗ FAIL: "${FACTS[t].label}" is stated without a citation</div>`);
     }
   }
   const failed = findings.some(h => h.includes('fail'));
@@ -671,6 +697,7 @@ async function run() {
       `[${CHANNEL_LABEL[p.channel]}] ${GENTLE_FAIL[p.channel]}`
     ));
     renderTelemetry(idx, t0, false, true);
+    running = false;
     return;
   }
 
@@ -691,6 +718,7 @@ async function run() {
   ));
 
   renderTelemetry(idx, t0, false, false);
+  running = false;
 }
 
 function renderTelemetry(idx, t0, escalated, blocked, partialEscalated) {
@@ -708,14 +736,14 @@ function renderTelemetry(idx, t0, escalated, blocked, partialEscalated) {
         <div class="telemetry-value">${OFFICE_REPORTED_BASELINE}</div>
       </div>
       <div class="telemetry-row">
-        <div class="telemetry-label">This query, start to finish</div>
+        <div class="telemetry-label">Demo animation time</div>
         <div class="telemetry-value accent">${elapsed}</div>
       </div>
       <div class="telemetry-row">
         <div class="telemetry-label">Outcome</div>
         <div class="telemetry-value" style="font-size:.95rem;">${outcomeLabel}</div>
       </div>
-      <div class="telemetry-note">Baseline is a figure reported by the Rent Control Board office, not a measurement performed by this system. The per-query time above is measured live in this demo run.</div>
+      <div class="telemetry-note">Baseline is a figure reported by the Rent Control Board office, not a measurement performed by this system. The animation time above is this page's own step pacing, timed live in this run. The two are not comparable, and no improvement over the baseline has been measured.</div>
     </div>
   `);
 }

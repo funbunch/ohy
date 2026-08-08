@@ -14,10 +14,15 @@ Built for Ericka Lesley and the residents of Santa Monica.
 - `index.html` — original one-page prompt-sharing tool (Jennifer, v2)
 - `demo.html` — **the hackathon demo**: one question, in, through the critic loop, out — with a queue panel showing the team-support vision
 - `duck.py` — the critic-loop logic as real, runnable code (not just a prompt), so the demo's one path is real, not simulated
+- `PITCH.md` — the pitch: problem, approach, and what it changes for the office
+- `QA-HARD.md` — the hardest questions judges will ask, answered honestly, including what is not built
+- `TELEMETRY.md` — what is instrumented and why, including what has not been measured yet
+- `FAIL_COPY.md` — the failure-message rationale and channel/language variants
+- `city-skin.css` — optional civic look-and-feel overlay, not applied by default
 
 ## The one path that has to work
 
-1. A resident types a rent-control question.
+1. A resident's question comes in. (In the demo you pick one of the prepared questions — there is no free-text box.)
 2. The agent drafts an answer.
 3. The agent critiques its own draft against the official facts (catches invented numbers, missing conditions, overconfidence).
 4. The final, cited answer is shown — with the critique visible, so you can see it catch itself.

@@ -81,6 +81,11 @@ promised, shown.
   the office* — say "reported," don't imply we measured it.
 - Don't promise a specific percentage or multiplier of improvement. None has
   been measured yet.
+- **On the trap question: the draft is fixed, the check that catches it is
+  live.** If a judge pushes on this, say it plainly. The failing draft is
+  scripted so the same failure reproduces on stage every time, while the
+  citation check that catches it runs for real against the fact table. That's
+  deliberate test design, not a dodge.
 - If asked about Airbnb / short-term rentals in Q&A: the official source
   doesn't address it, so the system escalates to a human rather than
   answering — say that directly if it comes up, don't guess an answer live.

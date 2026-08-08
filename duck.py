@@ -263,6 +263,13 @@ _ESCALATION_MESSAGE = {
 # offer a suggested-but-uncited answer even with a disclaimer, always ask for
 # more context instead of closing the door. Localized by channel because a
 # phone script needs to sound spoken, not read.
+# NOT currently reachable through ask(): critique() cannot return "FAILED,
+# answer withheld" for any draft that draft() built, because draft() inserts
+# each fact's citation itself and _detect_topics never returns an empty list.
+# This copy therefore applies only when a draft is constructed outside
+# draft(), as in the forced-failure case at the bottom of this file. Wiring it
+# to real traffic needs the retrieval-failure vs. coverage-limit check
+# described in FAIL_COPY.md, which is not built.
 _GENTLE_FAIL = {
     "phone": {
         "en": ("I want to make sure I give you the right information here -- "

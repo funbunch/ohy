@@ -17,7 +17,7 @@ for a year. Someone could not fight an eviction they had grounds to fight.
 
 A rubber duck that talks back — and then double-checks itself before speaking.
 
-Three steps, every single time:
+The same three steps whenever it answers:
 
 **1. It writes a draft answer.**
 Just like any AI would.
@@ -30,6 +30,10 @@ draft isn't on that list, it gets flagged.
 **3. Only then does it show you the answer.**
 And if step 2 found a problem it can't fix, it doesn't guess. It says "I don't
 have a verified answer for this" and points you to the city's official page.
+
+Some questions never reach step 1. If the topic is outside the official source
+altogether — short-term rentals, ADUs — it doesn't draft anything to check. It
+hands the case straight to a person instead.
 
 ## The part that makes this different
 
@@ -51,7 +55,9 @@ you'll see the system catch a fake number and refuse to answer.
 ## Try it in 30 seconds
 
 - **`demo.html`** — open it in any browser. No install, no internet needed.
-  Pick a question, click Ask, watch all four steps.
+  Pick a question, click Ask, and watch the steps appear one at a time. How
+  many you see depends on the question: three when it hands the case to a
+  person, four when the check blocks the answer, six when it answers in full.
 - **`index.html`** — copy the agent's instructions to paste into Claude,
   ChatGPT, or Grok and use it yourself right now.
 

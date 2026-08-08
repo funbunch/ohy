@@ -106,7 +106,7 @@ part.
 
 We don't have a cost estimate today, and giving one on stage would be
 guessing. What we can say concretely: the fact table for Santa Monica took
-building and verifying roughly a dozen specific facts from a handful of
+building and verifying seven specific facts from a handful of
 official sources (City Charter, Board Resolutions, Board actions) — that's
 the recurring cost per city, not a one-time engineering cost. The engine
 itself doesn't change per deployment.
