@@ -85,6 +85,31 @@
   .telemetry-note { font-size: .72rem; opacity: .55; margin-top: .6rem; }
 
   footer { margin-top: 2rem; font-size: .78rem; color: var(--muted); }
+
+  /* tabs */
+  .tab-bar { display: flex; gap: .4rem; margin-bottom: 1.4rem; border-bottom: 1px solid var(--border); }
+  .tab-btn { background: none; border: none; font-size: .88rem; font-weight: 600; color: var(--muted); padding: .6rem .3rem; cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab-btn.active { color: var(--ink); border-bottom-color: var(--accent); }
+  .tab-btn:hover { color: var(--ink); }
+
+  /* supervisor view (mockup) */
+  .supervisor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 700px) { .supervisor-grid { grid-template-columns: 1fr; } }
+  .sup-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.1rem 1.3rem; }
+  .sup-card h3 { font-size: .82rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .7rem; }
+  .sup-note { font-size: .82rem; color: var(--muted); font-style: italic; margin-bottom: .7rem; }
+  .staff-row { display: flex; justify-content: space-between; padding: .4rem 0; border-bottom: 1px solid var(--border); font-size: .88rem; }
+  .staff-row:last-child { border-bottom: none; }
+  .staff-role { color: var(--muted); font-size: .78rem; }
+  .staff-count { font-weight: 600; }
+  .pill-leave { display: inline-block; background: #fdeceb; color: var(--fail); font-size: .68rem; font-weight: 700; padding: .1rem .4rem; border-radius: 4px; margin-left: .4rem; }
+  .speed-row { display: flex; align-items: center; gap: .6rem; padding: .35rem 0; font-size: .85rem; }
+  .speed-name { width: 55px; flex-shrink: 0; }
+  .speed-bar { flex: 1; height: 8px; background: var(--border); border-radius: 999px; overflow: hidden; }
+  .speed-fill { height: 100%; background: var(--accent); border-radius: 999px; }
+  .speed-val { width: 100px; flex-shrink: 0; font-weight: 600; font-size: .8rem; }
+  .speed-trend { color: var(--ok); font-weight: 700; font-size: .72rem; }
+  .coverage-row, .requeue-row { font-size: .88rem; padding: .35rem 0; }
 </style>
 </head>
 <body>
@@ -100,25 +125,71 @@
   </aside>
 
   <main>
-    <div class="tag">V2 · REAL CRITIC LOOP, NOT JUST A PROMPT</div>
-    <h1>Santa Monica Rent Control — Rubber Duck</h1>
-    <p class="lead">The critique is code that checks the draft against cited facts — it can genuinely fail, it's not an LLM saying "I already checked myself."</p>
-
-    <div class="question-box">
-      <select id="questions">
-        <option value="0">📞 Phone — What is the 2026 general adjustment and is there a dollar cap?</option>
-        <option value="1">💬 Text — My tenancy started in November 2025. Am I eligible for the September 2026 adjustment?</option>
-        <option value="2">✉️ Email — I want to put my unit on Airbnb for short stays, does rent control apply?</option>
-        <option value="3">📞 Phone — I got a 3-day eviction notice, what do I do?</option>
-        <option value="4">✉️ Email — The landlord's story: "I came back to my beach house and there are people living inside for a year now..."</option>
-        <option value="5">⚠️ Trap question: what's the increase, according to you, 8%?</option>
-      </select>
-      <button class="ask" onclick="run()">Ask</button>
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tab-btn-demo" onclick="switchTab('demo')">Constituent Demo</button>
+      <button class="tab-btn" id="tab-btn-supervisor" onclick="switchTab('supervisor')">Supervisor View</button>
     </div>
 
-    <div id="steps"></div>
+    <div id="tab-demo">
+      <div class="tag">V2 · REAL CRITIC LOOP, NOT JUST A PROMPT</div>
+      <h1>Santa Monica Rent Control — Rubber Duck</h1>
+      <p class="lead">The critique is code that checks the draft against cited facts — it can genuinely fail, it's not an LLM saying "I already checked myself."</p>
 
-    <footer>Prototype · Claude Impact Lab, 2026-08-08 · Official facts: Resolution 26-001, Board Action Oct 2025</footer>
+      <div class="question-box">
+        <select id="questions">
+          <option value="0">📞 Phone — What is the 2026 general adjustment and is there a dollar cap?</option>
+          <option value="1">💬 Text — My tenancy started in November 2025. Am I eligible for the September 2026 adjustment?</option>
+          <option value="2">✉️ Email — I want to put my unit on Airbnb for short stays, does rent control apply?</option>
+          <option value="3">📞 Phone — I got a 3-day eviction notice, what do I do?</option>
+          <option value="4">✉️ Email — The landlord's story: "I came back to my beach house and there are people living inside for a year now..."</option>
+          <option value="5">⚠️ Trap question: what's the increase, according to you, 8%?</option>
+        </select>
+        <button class="ask" onclick="run()">Ask</button>
+      </div>
+
+      <div id="steps"></div>
+
+      <footer>Prototype · Claude Impact Lab, 2026-08-08 · Official facts: Resolution 26-001, Board Action Oct 2025</footer>
+    </div>
+
+    <div id="tab-supervisor" style="display:none;">
+      <div class="tag" style="background:#eee;color:var(--muted);">MOCKUP — VISION, NOT IMPLEMENTED TODAY</div>
+      <h1>Supervisor View</h1>
+      <p class="lead">"I also want to be able to show my boss that I'm doing things." — client, verbatim. What a supervisor needs to see day to day.</p>
+
+      <div class="supervisor-grid">
+        <div class="sup-card">
+          <h3>Cases by staff member</h3>
+          <div class="staff-row"><span class="staff-name">Maria <span class="staff-role">(lead)</span></span><span class="staff-count">14 active</span></div>
+          <div class="staff-row"><span class="staff-name">Devon <span class="staff-role">(intern)</span></span><span class="staff-count">6 active</span></div>
+          <div class="staff-row"><span class="staff-name">Priya <span class="staff-role">(intern)</span></span><span class="staff-count">5 active</span></div>
+          <div class="staff-row"><span class="staff-name">Sam <span class="staff-role">(part-time)</span></span><span class="staff-count">3 active <span class="pill-leave">on leave next 2 days</span></span></div>
+        </div>
+
+        <div class="sup-card">
+          <h3>Speed per person, over time</h3>
+          <p class="sup-note">"They started training, had less speed, now they're at full speed." — client, verbatim.</p>
+          <div class="speed-row"><span class="speed-name">Maria</span><div class="speed-bar"><div class="speed-fill" style="width:92%"></div></div><span class="speed-val">92%</span></div>
+          <div class="speed-row"><span class="speed-name">Devon</span><div class="speed-bar"><div class="speed-fill" style="width:78%"></div></div><span class="speed-val">78% <span class="speed-trend">↑ from 40%</span></span></div>
+          <div class="speed-row"><span class="speed-name">Priya</span><div class="speed-bar"><div class="speed-fill" style="width:85%"></div></div><span class="speed-val">85% <span class="speed-trend">↑ from 35%</span></span></div>
+          <div class="speed-row"><span class="speed-name">Sam</span><div class="speed-bar"><div class="speed-fill" style="width:60%"></div></div><span class="speed-val">60%</span></div>
+        </div>
+
+        <div class="sup-card">
+          <h3>Coverage</h3>
+          <div class="coverage-row"><span class="finding fail" style="padding:0;">Sam</span> — out next 2 days, <strong>4 cases reassigned</strong> to Maria &amp; Priya</div>
+          <div class="coverage-row">All other staff — <span class="finding ok" style="padding:0;">covered</span></div>
+        </div>
+
+        <div class="sup-card">
+          <h3>Unresolved / re-queued</h3>
+          <div class="requeue-row">3 cases re-queued this week (staff unavailable)</div>
+          <div class="requeue-row">1 case unresolved &gt;5 days — flagged for follow-up</div>
+        </div>
+      </div>
+
+      <footer style="margin-top:1.6rem;">Mockup only — no case data shown here is real. Field structure reflects the client's request, not a working integration.</footer>
+    </div>
   </main>
 </div>
 
@@ -211,6 +282,13 @@ const QUESTIONS = [
 
 const CHANNEL_ICON = {phone: "📞", text: "💬", email: "✉️"};
 const CHANNEL_LABEL = {phone: "Outbound call", text: "Outbound SMS", email: "Outbound email"};
+
+function switchTab(tab) {
+  document.getElementById('tab-demo').style.display = tab === 'demo' ? '' : 'none';
+  document.getElementById('tab-supervisor').style.display = tab === 'supervisor' ? '' : 'none';
+  document.getElementById('tab-btn-demo').classList.toggle('active', tab === 'demo');
+  document.getElementById('tab-btn-supervisor').classList.toggle('active', tab === 'supervisor');
+}
 
 function stepHTML(cls, title, bodyHTML) {
   return `<div class="step ${cls}"><h3>${title}</h3><div class="body">${bodyHTML}</div></div>`;

@@ -44,6 +44,35 @@ FACTS = {
     "just_cause_eviction": {"value": "applies; grounds listed in Charter Sec. 1806", "citation": "City Charter Sec. 1806"},
 }
 
+# Localized display value for each fact. FACTS stays the single source of
+# truth for the raw value (used by the critique's citation check); this only
+# translates the wording AROUND that value, so numbers/dates/citations never
+# get duplicated or drift between languages -- only phrasing does. Bug found
+# by w6 QA: draft() used to insert FACTS[t]["value"] directly, so a Spanish
+# response mixed a Spanish label with an English value ("tope en dólares...:
+# $70/month (units with MAR >= $2,674)"). Facts were correct (same number),
+# but it broke "meet them where they are" in Spanish.
+VALUE_TEMPLATES = {
+    "en": {
+        "ga_2026_pct": lambda: "2.6%",
+        "ga_2026_cap": lambda: "$70/month (units with MAR of $2,674 or more)",
+        "ga_2026_effective": lambda: "September 1, 2026",
+        "ga_eligibility": lambda: "tenancy started before Sep 1, 2025; unit properly registered; no uncorrected health/safety citations; written notice per state law",
+        "banked_cap": lambda: "maximum 10% of the tenant's previous rent in any 12-month period",
+        "coverage": lambda: "multi-unit buildings with a Certificate of Occupancy issued on or before Apr 10, 1979",
+        "just_cause_eviction": lambda: "applies; grounds listed in Charter Sec. 1806",
+    },
+    "es": {
+        "ga_2026_pct": lambda: "2.6%",
+        "ga_2026_cap": lambda: "$70/mes (unidades con MAR de $2,674 o más)",
+        "ga_2026_effective": lambda: "1 de septiembre de 2026",
+        "ga_eligibility": lambda: "tenencia iniciada antes del 1-sep-2025; unidad registrada; sin multas de salud/seguridad sin corregir; aviso escrito conforme a ley estatal",
+        "banked_cap": lambda: "máximo 10% del alquiler anterior en cualquier período de 12 meses",
+        "coverage": lambda: "edificios multi-unidad con Certificado de Ocupación emitido el 10-abr-1979 o antes",
+        "just_cause_eviction": lambda: "aplica; motivos en Charter Sec. 1806",
+    },
+}
+
 # Localized topic line, e.g. "ga 2026 pct: 2.6% [Resolution 26-001]" in EN,
 # same fact/citation in ES. Kept separate from FACTS so the citation-presence
 # check in critique() stays language-agnostic (it checks the citation string,
@@ -128,12 +157,18 @@ TWO_PARTY_FRAMING = {
     },
 }
 
-# Keywords indicating Airbnb / short-term rental. The official source does
-# NOT cover this topic -- nothing can be asserted, so it always escalates.
-AIRBNB_KEYWORDS = [
+# Keywords indicating Airbnb/short-term rental OR ADUs (accessory dwelling
+# units). Same treatment for both: escalate, don't answer. The official
+# source doesn't cover short-term rentals at all. ADUs are explicitly NOT the
+# same as short-term -- the client described them as legal only under "a very
+# specific set of conditions" and "a big problem" -- exactly the kind of
+# conditional, complex rule that must not be guessed at from a facts table
+# that doesn't have those conditions in it.
+ESCALATE_KEYWORDS = [
     "airbnb", "short-term", "short term", "alquiler corto", "vrbo",
     "por noche", "temporal", "turistico", "turístico", "vacation rental",
     "alquiler de corto plazo", "renta corta",
+    "adu", "accessory dwelling", "granny flat", "unidad accesoria", "casita",
 ]
 
 # Keywords indicating real urgency (imminent risk of losing housing or an
@@ -163,9 +198,9 @@ def _detect_language(question: str) -> Language:
     return "es" if any(marker in q for marker in SPANISH_MARKERS) else "en"
 
 
-def _detect_airbnb(question: str) -> bool:
+def _detect_escalate_topic(question: str) -> bool:
     q = question.lower()
-    return any(k in q for k in AIRBNB_KEYWORDS)
+    return any(k in q for k in ESCALATE_KEYWORDS)
 
 
 def _detect_urgency(question: str) -> Urgency:
@@ -282,9 +317,10 @@ def draft(question: str, channel: Channel) -> DuckResponse:
     r.facts_used = topics
     lines = []
     for t in topics:
-        f = FACTS[t]
+        citation = FACTS[t]["citation"]
         label = FACT_LABELS[language][t]
-        lines.append(f"{label}: {f['value']} [{f['citation']}]")
+        value = VALUE_TEMPLATES[language][t]()
+        lines.append(f"{label}: {value} [{citation}]")
         if t in TWO_PARTY_FRAMING[language]:
             r.framing[t] = TWO_PARTY_FRAMING[language][t]
     r.draft_text = _DEESCALATION[language][urgency if urgency == "URGENT" else "normal"] + " ".join(lines)
