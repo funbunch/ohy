@@ -257,11 +257,49 @@ _ESCALATION_MESSAGE = {
            "Mientras tanto podés revisar santamonica.gov/rentcontrol."),
 }
 
-_NO_VERIFIED_ANSWER = {
-    "en": ("I don't have a citation-verified answer for this. "
-           "Please check santamonica.gov/rentcontrol or contact the Agency directly."),
-    "es": ("No tengo una respuesta con cita verificada para esto. "
-           "Consultá santamonica.gov/rentcontrol o a la Agencia directamente."),
+# Gentle fail (5th client audio, live feedback): the critic's refusal is
+# correct and never changes -- an uncited claim is never shown. What changes
+# is the tone. Hard rules from FAIL_COPY.md: never say "unfortunately", never
+# offer a suggested-but-uncited answer even with a disclaimer, always ask for
+# more context instead of closing the door. Localized by channel because a
+# phone script needs to sound spoken, not read.
+_GENTLE_FAIL = {
+    "phone": {
+        "en": ("I want to make sure I give you the right information here -- "
+               "can you help me understand a little more about what you're "
+               "looking for? For example, are we talking about a rent "
+               "increase, an eviction, or something with your unit's coverage?"),
+        "es": ("Quiero asegurarme de darte la información correcta -- ¿podés "
+               "ayudarme a entender un poco más lo que necesitás? Por ejemplo, "
+               "¿es sobre un aumento de alquiler, un desalojo, o algo "
+               "relacionado con la cobertura de tu unidad?"),
+    },
+    "text": {
+        "en": ("Thanks for reaching out! I want to make sure I get you the "
+               "right answer -- can you tell me a bit more about what you're "
+               "looking for? For example, is this about a rent increase, "
+               "eviction notice, or something else?"),
+        "es": ("¡Gracias por escribirnos! Quiero asegurarme de darte la "
+               "respuesta correcta -- ¿podés contarme un poco más sobre lo "
+               "que necesitás? Por ejemplo, ¿es sobre un aumento de alquiler, "
+               "un aviso de desalojo, o algo distinto?"),
+    },
+    "email": {
+        "en": ("Thank you for your question. I want to make sure I point you "
+               "to the right information, and I'd like to understand a bit "
+               "more first -- could you share some additional detail about "
+               "your situation? For example, when this started, or which "
+               "part of your rent control question you're most trying to "
+               "resolve? Once I have that, I can look into it and get back "
+               "to you."),
+        "es": ("Gracias por tu consulta. Quiero asegurarme de orientarte con "
+               "la información correcta, así que me gustaría entender un "
+               "poco más primero -- ¿podrías compartir algún detalle "
+               "adicional sobre tu situación? Por ejemplo, cuándo comenzó, o "
+               "qué parte de tu consulta sobre control de alquileres es la "
+               "más importante para vos. Con eso, puedo revisarlo y "
+               "responderte."),
+    },
 }
 
 _TWO_PARTY_HEADER = {
@@ -363,7 +401,10 @@ def final_response(r: DuckResponse) -> DuckResponse:
         return r
 
     if r.critique_status == "FAILED, answer withheld":
-        r.final = f"{_DEESCALATION[r.language]['normal']}{_NO_VERIFIED_ANSWER[r.language]}"
+        # Gentle fail: no "unfortunately", no dead end -- ask for more
+        # context instead of declaring failure. Channel-specific because a
+        # phone script needs to sound spoken, not read.
+        r.final = _GENTLE_FAIL[r.channel][r.language]
         return r
 
     parts = [r.draft_text]

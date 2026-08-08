@@ -22,6 +22,31 @@ none have been measured yet.
 | `party` | Whether the constituent identifies as a tenant, a landlord, or unspecified |
 | `language` | Language the ticket was submitted in (en/es supported) |
 
+## Future intake channels (not built)
+
+`channel` today covers phone, text, and email. The office already has Google
+Drive and GitHub connected, and mentioned **Zoom** as another channel worth
+supporting later (e.g., a call transcript or meeting-derived ticket). This is
+documented as a future channel value, not something implemented in this
+build — adding it means extending `channel`'s allowed values and wiring an
+intake source, not a telemetry design change.
+
+## Design principle: data quality depends on capture being effortless
+
+A field that's tedious to fill in gets filled in carelessly — that's not a
+hypothetical, it's a known failure mode from people who've run enterprise
+data systems for decades: if logging a ticket is a burden on the person doing
+it, they will log something just to get past the form, and the telemetry
+built on top of that is worthless no matter how well the fields are designed.
+
+This means the fields above are aspirational unless the actual data-entry
+step (whoever or whatever creates a ticket record) is as close to zero extra
+effort as possible — ideally auto-captured from the channel and the
+draft/critique/response flow itself, not hand-typed by a staff member after
+the fact. Any implementation of this schema should treat "is this cheap to
+fill in accurately" as a hard constraint on the ticket UI, not an
+afterthought to optimize once the fields exist.
+
 ## Baseline comparison
 
 **Baseline: 3–5 weeks per ticket.**
