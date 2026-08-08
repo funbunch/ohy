@@ -266,7 +266,7 @@ async function run() {
       `[${CHANNEL_LABEL[p.channel]}] Here's what applies in general: ${cited}. For your specific situation, this needs a full review by our staff -- I'm escalating it now so someone can walk through the details with you. In the meantime you can check santamonica.gov/rentcontrol.` +
       `<div class="closing-question">Does this cover your question, or do you need more info?</div>`
     ));
-    renderTelemetry(idx, t0, true);
+    renderTelemetry(idx, t0, false, false, true);
     return;
   }
 
@@ -319,11 +319,12 @@ async function run() {
   renderTelemetry(idx, t0, false, false);
 }
 
-function renderTelemetry(idx, t0, escalated, blocked) {
+function renderTelemetry(idx, t0, escalated, blocked, partialEscalated) {
   const elapsed = fmtMinutes(t0);
   let outcomeLabel = "Resolved without human staff";
   if (escalated) outcomeLabel = "Escalated to human staff (correct outcome — topic outside official source)";
   if (blocked) outcomeLabel = "Answer withheld by critique (correct outcome — no invented facts shown)";
+  if (partialEscalated) outcomeLabel = "General rule cited, case-specific review escalated (correct outcome — same standard for landlord as for tenant)";
 
   document.getElementById('steps').insertAdjacentHTML('beforeend', `
     <div class="telemetry">
